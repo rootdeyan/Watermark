@@ -1,0 +1,850 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>rootdeyan | Free Watermark</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0a0a0a;
+    --surface: #111111;
+    --border: #1f1f1f;
+    --border-hover: #2e2e2e;
+    --accent: #c8f04a;
+    --accent-dim: rgba(200,240,74,0.08);
+    --text: #e8e8e8;
+    --text-muted: #555;
+    --text-dim: #888;
+    --danger: #ff4d4d;
+    --radius: 6px;
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Roboto', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── HEADER ── */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 24px 40px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .logo {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 22px;
+    letter-spacing: -0.5px;
+    color: var(--accent);
+  }
+  .logo span { color: var(--text-muted); font-weight: 400; }
+
+  .badge {
+    font-size: 10px;
+    color: var(--text-muted);
+    border: 1px solid var(--border);
+    padding: 4px 10px;
+    border-radius: 100px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+  }
+
+  /* ── MAIN LAYOUT ── */
+  main {
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    gap: 0;
+    min-height: calc(100vh - 73px);
+  }
+
+  /* ── LEFT PANEL ── */
+  .panel-left {
+    padding: 40px;
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+  }
+
+  .section-label {
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 14px;
+  }
+
+  /* DROP ZONE */
+  .dropzone {
+    border: 1px dashed var(--border-hover);
+    border-radius: var(--radius);
+    padding: 52px 32px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+    background: var(--surface);
+  }
+
+  .dropzone:hover, .dropzone.drag-over {
+    border-color: var(--accent);
+    background: var(--accent-dim);
+  }
+
+  .dropzone.drag-over { transform: scale(1.005); }
+
+  .drop-icon {
+    width: 44px;
+    height: 44px;
+    margin: 0 auto 16px;
+    opacity: 0.4;
+  }
+
+  .dropzone h2 {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 18px;
+    margin-bottom: 8px;
+  }
+
+  .dropzone p {
+    font-size: 12px;
+    color: var(--text-dim);
+    line-height: 1.6;
+  }
+
+  .drop-formats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    justify-content: center;
+    margin-top: 16px;
+  }
+
+  .fmt-tag {
+    font-size: 10px;
+    padding: 3px 8px;
+    border-radius: 3px;
+    background: var(--border);
+    color: var(--text-muted);
+    letter-spacing: 0.5px;
+  }
+
+  #file-input { display: none; }
+
+  /* FILE QUEUE */
+  .file-queue {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .file-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    transition: border-color 0.2s;
+  }
+
+  .file-item.done { border-color: var(--accent); }
+  .file-item.processing { border-color: #555; }
+  .file-item.error { border-color: var(--danger); }
+
+  .file-thumb {
+    width: 42px;
+    height: 42px;
+    object-fit: cover;
+    border-radius: 3px;
+    flex-shrink: 0;
+    background: var(--border);
+  }
+
+  .file-info { flex: 1; min-width: 0; }
+  .file-name {
+    font-size: 12px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-bottom: 3px;
+  }
+  .file-meta { font-size: 10px; color: var(--text-dim); }
+
+  .file-status {
+    font-size: 10px;
+    padding: 3px 8px;
+    border-radius: 3px;
+    flex-shrink: 0;
+  }
+  .file-status.pending { background: var(--border); color: var(--text-muted); }
+  .file-status.processing { background: #1a1a00; color: #c8f04a88; }
+  .file-status.done { background: rgba(200,240,74,0.12); color: var(--accent); }
+  .file-status.error { background: rgba(255,77,77,0.12); color: var(--danger); }
+
+  .file-remove {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 16px;
+    line-height: 1;
+    padding: 2px 4px;
+    transition: color 0.15s;
+  }
+  .file-remove:hover { color: var(--danger); }
+
+  /* ── RIGHT PANEL ── */
+  .panel-right {
+    padding: 40px 32px;
+    display: flex;
+    flex-direction: column;
+    gap: 32px;
+  }
+
+  /* CONTROLS */
+  .control-group { display: flex; flex-direction: column; gap: 12px; }
+
+  .control-row {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .control-label {
+    font-size: 11px;
+    color: var(--text-dim);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .control-label span {
+    font-size: 11px;
+    color: var(--accent);
+    font-weight: 500;
+  }
+
+  input[type="text"],
+  input[type="number"],
+  select {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'Roboto', sans-serif;
+    font-size: 13px;
+    padding: 10px 12px;
+    border-radius: var(--radius);
+    width: 100%;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  input[type="text"]:focus,
+  input[type="number"]:focus,
+  select:focus { border-color: var(--accent); }
+
+  select option { background: #111; }
+
+  input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 2px;
+    background: var(--border);
+    outline: none;
+    border-radius: 2px;
+    cursor: pointer;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--accent);
+    cursor: pointer;
+    transition: transform 0.15s;
+  }
+  input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.3); }
+
+  /* TOGGLE */
+  .toggle-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 14px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: border-color 0.2s;
+  }
+  .toggle-row:hover { border-color: var(--border-hover); }
+  .toggle-label { font-size: 12px; }
+  .toggle-sub { font-size: 10px; color: var(--text-dim); margin-top: 2px; }
+
+  .toggle-switch {
+    width: 36px;
+    height: 20px;
+    background: var(--border);
+    border-radius: 10px;
+    position: relative;
+    transition: background 0.2s;
+    flex-shrink: 0;
+  }
+  .toggle-switch.on { background: var(--accent); }
+  .toggle-switch::after {
+    content: '';
+    position: absolute;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #fff;
+    top: 3px;
+    left: 3px;
+    transition: transform 0.2s;
+  }
+  .toggle-switch.on::after { transform: translateX(16px); }
+
+  /* DIVIDER */
+  .divider {
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* PROCESS BTN */
+  .btn-process {
+    width: 100%;
+    padding: 14px;
+    background: var(--accent);
+    color: #0a0a0a;
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 14px;
+    letter-spacing: 0.5px;
+    border: none;
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: opacity 0.2s, transform 0.15s;
+  }
+  .btn-process:hover { opacity: 0.9; transform: translateY(-1px); }
+  .btn-process:active { transform: translateY(0); }
+  .btn-process:disabled { opacity: 0.35; cursor: not-allowed; transform: none; }
+
+  .btn-download-all {
+    width: 100%;
+    padding: 12px;
+    background: transparent;
+    color: var(--accent);
+    font-family: 'Roboto', sans-serif;
+    font-size: 12px;
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: background 0.2s;
+    display: none;
+  }
+  .btn-download-all:hover { background: var(--accent-dim); }
+  .btn-download-all.visible { display: block; }
+
+  /* STATS */
+  .stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .stat-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px;
+  }
+  .stat-val {
+    font-family: 'Syne', sans-serif;
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--accent);
+  }
+  .stat-lbl { font-size: 10px; color: var(--text-muted); margin-top: 2px; }
+
+  /* EMPTY STATE */
+  .empty-hint {
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 12px;
+    padding: 32px 0;
+    line-height: 1.7;
+    display: none;
+  }
+
+  /* PROGRESS BAR */
+  .progress-bar-wrap {
+    height: 2px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+    display: none;
+  }
+  .progress-bar-fill {
+    height: 100%;
+    background: var(--accent);
+    width: 0%;
+    transition: width 0.3s ease;
+  }
+
+  /* PREVIEW MODAL */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.88);
+    z-index: 100;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(4px);
+  }
+  .modal-overlay.open { display: flex; }
+  .modal-img {
+    max-width: 90vw;
+    max-height: 85vh;
+    border-radius: 4px;
+    box-shadow: 0 24px 80px rgba(0,0,0,0.7);
+  }
+  .modal-close {
+    position: absolute;
+    top: 24px;
+    right: 28px;
+    background: none;
+    border: none;
+    color: #fff;
+    font-size: 28px;
+    cursor: pointer;
+    line-height: 1;
+    opacity: 0.6;
+    transition: opacity 0.15s;
+  }
+  .modal-close:hover { opacity: 1; }
+
+  /* SCROLLBAR */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  @media (max-width: 860px) {
+    main { grid-template-columns: 1fr; }
+    .panel-right { border-top: 1px solid var(--border); }
+    header { padding: 18px 24px; }
+    .panel-left, .panel-right { padding: 28px 24px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">rootdeyan<span> | Free Watermark</span></div>
+  <div class="badge">Local · Private · No Upload</div>
+</header>
+
+<main>
+  <!-- LEFT: Drop + Queue -->
+  <div class="panel-left">
+    <div>
+      <div class="section-label">01 — Select Images</div>
+      <div class="dropzone" id="dropzone">
+        <svg class="drop-icon" viewBox="0 0 44 44" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="4" y="10" width="36" height="28" rx="3" stroke="#e8e8e8" stroke-width="1.5"/>
+          <circle cx="15" cy="20" r="3" stroke="#e8e8e8" stroke-width="1.5"/>
+          <path d="M4 30l9-8 7 7 5-5 10 8" stroke="#e8e8e8" stroke-width="1.5" stroke-linejoin="round"/>
+          <path d="M22 4v10M18 8l4-4 4 4" stroke="#c8f04a" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <h2>Drop images here</h2>
+        <p>or click to browse files<br>All images processed locally — nothing leaves your device</p>
+        <div class="drop-formats">
+          <span class="fmt-tag">JPG</span><span class="fmt-tag">PNG</span>
+          <span class="fmt-tag">WEBP</span><span class="fmt-tag">BMP</span>
+          <span class="fmt-tag">GIF</span><span class="fmt-tag">TIFF</span>
+          <span class="fmt-tag">HEIC*</span>
+        </div>
+        <input type="file" id="file-input" multiple accept="image/*">
+      </div>
+    </div>
+
+    <div>
+      <div class="section-label">02 — Queue <span id="queue-count" style="color:var(--text-dim)"></span></div>
+      <div class="progress-bar-wrap" id="progress-wrap">
+        <div class="progress-bar-fill" id="progress-fill"></div>
+      </div>
+      <div class="file-queue" id="file-queue">
+        <p class="empty-hint" id="empty-hint" style="display:block">
+          No images yet.<br>Add some files above to get started.
+        </p>
+      </div>
+    </div>
+
+    <div class="stats">
+      <div class="stat-box">
+        <div class="stat-val" id="stat-total">0</div>
+        <div class="stat-lbl">Total images</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-val" id="stat-done">0</div>
+        <div class="stat-lbl">Processed</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT: Settings -->
+  <div class="panel-right">
+    <div>
+      <div class="section-label">03 — Watermark Text</div>
+      <div class="control-group">
+        <div class="control-row">
+          <div class="control-label">Text</div>
+          <input type="text" id="wm-text" value="© Your Name" placeholder="© Your Name 2025">
+        </div>
+        <div class="control-row">
+          <div class="control-label">Font size <span id="size-val">28</span>px</div>
+          <input type="range" id="wm-size" min="12" max="80" value="28">
+        </div>
+        <div class="control-row">
+          <div class="control-label">Opacity <span id="opacity-val">12</span>%</div>
+          <input type="range" id="wm-opacity" min="4" max="40" value="12">
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="section-label">04 — Layout</div>
+      <div class="control-group">
+        <div class="control-row">
+          <div class="control-label">Angle <span id="angle-val">30</span>°</div>
+          <input type="range" id="wm-angle" min="10" max="60" value="30">
+        </div>
+        <div class="control-row">
+          <div class="control-label">Density <span id="density-val">medium</span></div>
+          <select id="wm-density">
+            <option value="120">Sparse</option>
+            <option value="200" selected>Medium</option>
+            <option value="300">Dense</option>
+          </select>
+        </div>
+        <div class="control-row">
+          <div class="control-label">Color</div>
+          <select id="wm-color">
+            <option value="255,255,255">White</option>
+            <option value="0,0,0">Black</option>
+            <option value="200,240,74">Lime</option>
+            <option value="150,150,150">Grey</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="section-label">05 — Output</div>
+      <div class="control-group">
+        <div class="control-row">
+          <div class="control-label">Format</div>
+          <select id="out-format">
+            <option value="image/jpeg">JPEG (lossy, smaller)</option>
+            <option value="image/png" selected>PNG (lossless)</option>
+            <option value="image/webp">WebP (modern)</option>
+          </select>
+        </div>
+        <div class="control-row">
+          <div class="control-label">Quality <span id="quality-val">95</span>%</div>
+          <input type="range" id="out-quality" min="70" max="100" value="95">
+        </div>
+
+        <div class="toggle-row" id="toggle-meta" onclick="toggleMeta()">
+          <div>
+            <div class="toggle-label">Strip Metadata</div>
+            <div class="toggle-sub">Remove EXIF, GPS, camera info</div>
+          </div>
+          <div class="toggle-switch on" id="toggle-meta-sw"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <button class="btn-process" id="btn-process" disabled onclick="processAll()">
+      Process Images
+    </button>
+
+    <button class="btn-download-all" id="btn-dl-all" onclick="downloadAll()">
+      ↓ Download All Processed
+    </button>
+  </div>
+</main>
+
+<!-- MODAL PREVIEW -->
+<div class="modal-overlay" id="modal" onclick="closeModal()">
+  <button class="modal-close">✕</button>
+  <img class="modal-img" id="modal-img" src="" alt="Preview">
+</div>
+
+<canvas id="wm-canvas" style="display:none"></canvas>
+
+<script>
+  const dropzone = document.getElementById('dropzone');
+  const fileInput = document.getElementById('file-input');
+  const fileQueue = document.getElementById('file-queue');
+  const emptyHint = document.getElementById('empty-hint');
+  const btnProcess = document.getElementById('btn-process');
+  const btnDlAll = document.getElementById('btn-dl-all');
+  const progressWrap = document.getElementById('progress-wrap');
+  const progressFill = document.getElementById('progress-fill');
+  const canvas = document.getElementById('wm-canvas');
+  const ctx = canvas.getContext('2d');
+  const modal = document.getElementById('modal');
+  const modalImg = document.getElementById('modal-img');
+
+  let files = [];
+  let results = [];
+  let metaStrip = true;
+
+  // ── RANGE LABELS ──
+  const rangeMap = {
+    'wm-size': 'size-val',
+    'wm-opacity': 'opacity-val',
+    'wm-angle': 'angle-val',
+    'out-quality': 'quality-val'
+  };
+  Object.keys(rangeMap).forEach(id => {
+    const el = document.getElementById(id);
+    el.addEventListener('input', () => {
+      document.getElementById(rangeMap[id]).textContent = el.value;
+    });
+  });
+
+  document.getElementById('wm-density').addEventListener('change', function() {
+    const labels = { '120': 'sparse', '200': 'medium', '300': 'dense' };
+    document.getElementById('density-val').textContent = labels[this.value];
+  });
+
+  function toggleMeta() {
+    metaStrip = !metaStrip;
+    document.getElementById('toggle-meta-sw').classList.toggle('on', metaStrip);
+  }
+
+  // ── DROP ZONE ──
+  dropzone.addEventListener('click', () => fileInput.click());
+  fileInput.addEventListener('change', e => addFiles([...e.target.files]));
+
+  dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('drag-over'); });
+  dropzone.addEventListener('dragleave', () => dropzone.classList.remove('drag-over'));
+  dropzone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropzone.classList.remove('drag-over');
+    addFiles([...e.dataTransfer.files].filter(f => f.type.startsWith('image/')));
+  });
+
+  function addFiles(newFiles) {
+    newFiles.forEach(f => {
+      if (!files.find(x => x.name === f.name && x.size === f.size)) {
+        files.push(f);
+        renderFileItem(f);
+      }
+    });
+    updateUI();
+  }
+
+  function renderFileItem(f) {
+    emptyHint.style.display = 'none';
+    const item = document.createElement('div');
+    item.className = 'file-item';
+    item.dataset.name = f.name;
+
+    const reader = new FileReader();
+    const thumb = document.createElement('img');
+    thumb.className = 'file-thumb';
+    thumb.style.cursor = 'pointer';
+    reader.onload = e => {
+      thumb.src = e.target.result;
+      thumb.onclick = () => { modalImg.src = e.target.result; modal.classList.add('open'); };
+    };
+    reader.readAsDataURL(f);
+
+    const size = f.size < 1048576
+      ? (f.size / 1024).toFixed(1) + ' KB'
+      : (f.size / 1048576).toFixed(2) + ' MB';
+
+    item.innerHTML = `
+      <div class="file-info">
+        <div class="file-name">${f.name}</div>
+        <div class="file-meta">${size} · ${f.type || 'image/*'}</div>
+      </div>
+      <div class="file-status pending">pending</div>
+      <button class="file-remove" title="Remove">✕</button>
+    `;
+    item.insertBefore(thumb, item.firstChild);
+    item.querySelector('.file-remove').onclick = () => removeFile(f, item);
+    fileQueue.appendChild(item);
+  }
+
+  function removeFile(f, item) {
+    files = files.filter(x => x !== f);
+    results = results.filter(x => x.name !== f.name);
+    item.remove();
+    if (files.length === 0) emptyHint.style.display = 'block';
+    updateUI();
+  }
+
+  function updateUI() {
+    document.getElementById('queue-count').textContent = files.length ? `(${files.length})` : '';
+    document.getElementById('stat-total').textContent = files.length;
+    document.getElementById('stat-done').textContent = results.length;
+    btnProcess.disabled = files.length === 0;
+    btnDlAll.classList.toggle('visible', results.length > 0);
+  }
+
+  function setItemStatus(name, status) {
+    const item = fileQueue.querySelector(`[data-name="${CSS.escape(name)}"]`);
+    if (!item) return;
+    const s = item.querySelector('.file-status');
+    s.className = `file-status ${status}`;
+    s.textContent = status;
+  }
+
+  // ── WATERMARK ENGINE ──
+  async function applyWatermark(file) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      const url = URL.createObjectURL(file);
+      img.onload = () => {
+        const w = img.naturalWidth;
+        const h = img.naturalHeight;
+        canvas.width = w;
+        canvas.height = h;
+
+        ctx.clearRect(0, 0, w, h);
+        ctx.drawImage(img, 0, 0);
+        URL.revokeObjectURL(url);
+
+        const text = document.getElementById('wm-text').value || '© Watermark';
+        const fontSize = parseInt(document.getElementById('wm-size').value);
+        const opacity = parseInt(document.getElementById('wm-opacity').value) / 100;
+        const angleDeg = parseInt(document.getElementById('wm-angle').value);
+        const angleRad = (angleDeg * Math.PI) / 180;
+        const gap = parseInt(document.getElementById('wm-density').value);
+        const color = document.getElementById('wm-color').value;
+
+        ctx.save();
+        ctx.font = `${fontSize}px Roboto, sans-serif`;
+        ctx.fillStyle = `rgba(${color},${opacity})`;
+        ctx.textBaseline = 'middle';
+
+        const textWidth = ctx.measureText(text).width;
+        const diag = Math.sqrt(w * w + h * h);
+
+        ctx.translate(w / 2, h / 2);
+        ctx.rotate(angleRad);
+
+        const cols = Math.ceil(diag / (textWidth + gap)) + 2;
+        const rows = Math.ceil(diag / (fontSize + gap)) + 2;
+        const startX = -cols * (textWidth + gap) / 2;
+        const startY = -rows * (fontSize + gap) / 2;
+
+        for (let row = 0; row < rows; row++) {
+          const offsetX = (row % 2 === 0) ? 0 : (textWidth + gap) / 2;
+          for (let col = 0; col < cols; col++) {
+            const x = startX + col * (textWidth + gap) + offsetX;
+            const y = startY + row * (fontSize + gap);
+            ctx.fillText(text, x, y);
+          }
+        }
+
+        ctx.restore();
+
+        const format = document.getElementById('out-format').value;
+        const quality = parseInt(document.getElementById('out-quality').value) / 100;
+
+        // Metadata is naturally stripped by canvas re-export
+        canvas.toBlob(blob => {
+          if (!blob) { reject(new Error('Canvas export failed')); return; }
+          const ext = format === 'image/jpeg' ? '.jpg'
+                    : format === 'image/webp' ? '.webp'
+                    : '.png';
+          const baseName = file.name.replace(/\.[^.]+$/, '');
+          resolve({ name: baseName + '_marked' + ext, blob, url: URL.createObjectURL(blob) });
+        }, format, quality);
+      };
+      img.onerror = () => reject(new Error('Image load failed'));
+      img.src = url;
+    });
+  }
+
+  // ── PROCESS ALL ──
+  async function processAll() {
+    if (files.length === 0) return;
+    results = [];
+    btnProcess.disabled = true;
+    progressWrap.style.display = 'block';
+    btnDlAll.classList.remove('visible');
+
+    for (let i = 0; i < files.length; i++) {
+      const f = files[i];
+      setItemStatus(f.name, 'processing');
+      try {
+        const result = await applyWatermark(f);
+        results.push(result);
+        setItemStatus(f.name, 'done');
+
+        // Update thumb with processed version
+        const item = fileQueue.querySelector(`[data-name="${CSS.escape(f.name)}"]`);
+        if (item) {
+          const thumb = item.querySelector('.file-thumb');
+          const oldUrl = thumb.src;
+          thumb.src = result.url;
+          thumb.onclick = () => { modalImg.src = result.url; modal.classList.add('open'); };
+          if (oldUrl.startsWith('blob:')) URL.revokeObjectURL(oldUrl);
+        }
+      } catch (e) {
+        setItemStatus(f.name, 'error');
+        console.error(e);
+      }
+
+      progressFill.style.width = ((i + 1) / files.length * 100) + '%';
+      document.getElementById('stat-done').textContent = results.length;
+    }
+
+    btnProcess.disabled = false;
+    if (results.length > 0) {
+      btnDlAll.classList.add('visible');
+      if (results.length === 1) autoDownload(results[0]);
+    }
+    updateUI();
+  }
+
+  function autoDownload(result) {
+    const a = document.createElement('a');
+    a.href = result.url;
+    a.download = result.name;
+    a.click();
+  }
+
+  function downloadAll() {
+    results.forEach((r, i) => {
+      setTimeout(() => autoDownload(r), i * 300);
+    });
+  }
+
+  function closeModal() { modal.classList.remove('open'); }
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+</script>
+</body>
+</html>
