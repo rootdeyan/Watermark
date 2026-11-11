@@ -1,850 +1,970 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark" data-palette="lime">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>rootdeyan | Free Watermark</title>
+<!-- no pinch / double-tap / input-focus zoom -->
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>RTDN | Free Watermark</title>
+<script>
+  // Apply saved theme + palette before paint (no flash)
+  (function () {
+    var pref = 'auto', pal = 'lime';
+    try { pref = localStorage.getItem('wm-theme') || 'auto'; pal = localStorage.getItem('wm-palette') || 'lime'; } catch (e) {}
+    var dark = pref === 'dark' || (pref === 'auto' && matchMedia('(prefers-color-scheme: dark)').matches);
+    document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+    document.documentElement.dataset.palette = pal;
+  })();
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;800&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+  /* ── PALETTES: -d = used in dark theme, -l = used in light theme ── */
+  html[data-palette="lime"]   { --a-d:#c8f04a; --a-l:#4d7c0f; --on-d:#0b0f02; }
+  html[data-palette="violet"] { --a-d:#a78bfa; --a-l:#6d28d9; --on-d:#160b33; }
+  html[data-palette="ocean"]  { --a-d:#38bdf8; --a-l:#0369a1; --on-d:#021826; }
+  html[data-palette="sunset"] { --a-d:#fb923c; --a-l:#c2410c; --on-d:#2a1003; }
+  html[data-palette="rose"]   { --a-d:#fb7185; --a-l:#be123c; --on-d:#2b0610; }
+  html[data-palette="mint"]   { --a-d:#34d399; --a-l:#047857; --on-d:#02231a; }
+
   :root {
-    --bg: #0a0a0a;
-    --surface: #111111;
-    --border: #1f1f1f;
-    --border-hover: #2e2e2e;
-    --accent: #c8f04a;
-    --accent-dim: rgba(200,240,74,0.08);
-    --text: #e8e8e8;
-    --text-muted: #555;
-    --text-dim: #888;
-    --danger: #ff4d4d;
-    --radius: 6px;
+    --radius: 16px;
+    --radius-sm: 10px;
+    --ease: cubic-bezier(.2,.8,.2,1);
+    --spring: cubic-bezier(.34,1.56,.64,1);
+    --font: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --display: 'Space Grotesk', var(--font);
   }
+  html[data-theme="dark"] {
+    --bg:#09090b; --bg2:#121215; --surface:rgba(24,24,27,.66); --surface-solid:#18181b;
+    --border:#27272a; --border-strong:#3f3f46; --text:#fafafa; --muted:#a1a1aa; --faint:#71717a;
+    --accent:var(--a-d); --on-accent:var(--on-d);
+    --ok:#4ade80; --warn:#fbbf24; --danger:#f87171;
+    --shadow:0 18px 50px -20px rgba(0,0,0,.7);
+  }
+  html[data-theme="light"] {
+    --bg:#f5f5f7; --bg2:#ececf0; --surface:rgba(255,255,255,.78); --surface-solid:#ffffff;
+    --border:#e4e4e7; --border-strong:#d4d4d8; --text:#18181b; --muted:#52525b; --faint:#8a8a93;
+    --accent:var(--a-l); --on-accent:#ffffff;
+    --ok:#15803d; --warn:#b45309; --danger:#dc2626;
+    --shadow:0 18px 50px -24px rgba(24,24,27,.25);
+  }
+  :root { --accent-soft: color-mix(in srgb, var(--accent) 14%, transparent); --accent-line: color-mix(in srgb, var(--accent) 45%, transparent); }
 
-  html { scroll-behavior: smooth; }
-
+  html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; scroll-behavior: smooth; }
+  html, body { touch-action: manipulation; } /* kills double-tap zoom */
   body {
+    font-family: var(--font);
     background: var(--bg);
     color: var(--text);
-    font-family: 'Roboto', sans-serif;
     min-height: 100vh;
+    min-height: 100dvh;
     overflow-x: hidden;
+    -webkit-tap-highlight-color: transparent;
+    transition: background-color .4s var(--ease), color .4s var(--ease);
   }
+  button, input, select, label { font: inherit; color: inherit; }
+  button { cursor: pointer; background: none; border: 0; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  /* ambient background */
+  .ambient { position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; }
+  .ambient span {
+    position: absolute; width: 46vmax; height: 46vmax; border-radius: 50%;
+    filter: blur(90px); opacity: .22;
+    background: var(--accent);
+    animation: float 22s ease-in-out infinite alternate;
+    transition: background .6s var(--ease);
+  }
+  .ambient span:nth-child(1) { top: -20vmax; left: -12vmax; }
+  .ambient span:nth-child(2) { bottom: -24vmax; right: -14vmax; opacity: .12; animation-delay: -11s; }
+  html[data-theme="light"] .ambient span { opacity: .14; }
+  @keyframes float { to { transform: translate(8vmax, 6vmax) scale(1.15); } }
 
   /* ── HEADER ── */
-  header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 24px 40px;
+  .topbar {
+    position: sticky; top: 0; z-index: 20;
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px;
+    padding: 14px clamp(16px, 3vw, 36px);
+    padding-top: max(14px, env(safe-area-inset-top));
+    background: color-mix(in srgb, var(--bg) 72%, transparent);
+    backdrop-filter: blur(18px) saturate(1.4); -webkit-backdrop-filter: blur(18px) saturate(1.4);
     border-bottom: 1px solid var(--border);
   }
-
-  .logo {
-    font-family: 'Roboto', sans-serif;
-    font-weight: 800;
-    font-size: 22px;
-    letter-spacing: -0.5px;
-    color: var(--accent);
+  .brand { display: flex; align-items: center; gap: 12px; }
+  .brand-mark {
+    width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center;
+    background: var(--accent); color: var(--on-accent); font-size: 18px;
+    box-shadow: 0 8px 24px -8px var(--accent);
+    animation: pop .7s var(--spring) both;
+    transition: background .4s, color .4s;
   }
-  .logo span { color: var(--text-muted); font-weight: 400; }
-
-  .badge {
-    font-size: 10px;
-    color: var(--text-muted);
-    border: 1px solid var(--border);
-    padding: 4px 10px;
-    border-radius: 100px;
-    letter-spacing: 1.5px;
-    text-transform: uppercase;
+  .brand b { font-family: var(--display); font-size: 20px; letter-spacing: -.5px; display: block; line-height: 1; }
+  .brand small { font-size: 12px; color: var(--muted); }
+  .top-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .pill {
+    display: inline-flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted);
+    padding: 8px 12px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface);
   }
+  .pill i { color: var(--accent); }
 
-  /* ── MAIN LAYOUT ── */
-  main {
-    display: grid;
-    grid-template-columns: 1fr 340px;
-    gap: 0;
-    min-height: calc(100vh - 73px);
+  /* segmented radio control (theme, density, format) */
+  .seg { display: inline-flex; padding: 3px; gap: 2px; border-radius: 999px; background: var(--bg2); border: 1px solid var(--border); }
+  .seg input { position: absolute; opacity: 0; pointer-events: none; }
+  .seg label {
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    padding: 7px 12px; border-radius: 999px; font-size: 13px; color: var(--muted); cursor: pointer; white-space: nowrap;
+    transition: background .25s var(--ease), color .25s var(--ease), transform .15s;
   }
+  .seg label:hover { color: var(--text); }
+  .seg label:active { transform: scale(.94); }
+  .seg input:checked + label { background: var(--accent); color: var(--on-accent); box-shadow: 0 4px 14px -6px var(--accent); }
+  .seg input:focus-visible + label { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .seg.full { display: flex; width: 100%; }
+  .seg.full label { flex: 1; }
 
-  /* ── LEFT PANEL ── */
-  .panel-left {
-    padding: 40px;
-    border-right: 1px solid var(--border);
-    display: flex;
-    flex-direction: column;
-    gap: 28px;
+  /* palette swatches */
+  .palettes { display: inline-flex; gap: 6px; padding: 6px 8px; border-radius: 999px; background: var(--bg2); border: 1px solid var(--border); }
+  .palettes input { position: absolute; opacity: 0; pointer-events: none; }
+  .palettes label {
+    width: 22px; height: 22px; border-radius: 50%; cursor: pointer; background: var(--sw);
+    box-shadow: inset 0 0 0 2px rgba(0,0,0,.15);
+    transition: transform .25s var(--spring), box-shadow .25s;
   }
+  .palettes label:hover { transform: scale(1.18); }
+  .palettes input:checked + label { box-shadow: 0 0 0 2px var(--bg2), 0 0 0 4px var(--sw); transform: scale(1.05); }
+  .palettes input:focus-visible + label { outline: 2px solid var(--text); outline-offset: 3px; }
 
-  .section-label {
-    font-size: 10px;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    color: var(--text-muted);
-    margin-bottom: 14px;
+  /* ── LAYOUT ── */
+  .layout {
+    display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 24px; align-items: start;
+    max-width: 1320px; margin: 0 auto; padding: 28px clamp(16px, 3vw, 36px) 48px;
   }
+  .col { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+  .side { position: sticky; top: 92px; }
+
+  .card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 22px; box-shadow: var(--shadow);
+    backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    animation: rise .6s var(--ease) both; animation-delay: var(--d, 0s);
+    transition: background-color .4s var(--ease), border-color .4s var(--ease);
+  }
+  @keyframes rise { from { opacity: 0; transform: translateY(16px); } }
+  @keyframes pop { from { opacity: 0; transform: scale(.6); } }
+
+  .card-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
+  .card-title { display: flex; align-items: center; gap: 10px; font-family: var(--display); font-size: 15px; font-weight: 700; letter-spacing: -.2px; }
+  .card-title .num {
+    width: 26px; height: 26px; border-radius: 8px; display: grid; place-items: center; font-size: 12px;
+    background: var(--accent-soft); color: var(--accent);
+  }
+  .muted { color: var(--muted); font-size: 13px; }
 
   /* DROP ZONE */
   .dropzone {
-    border: 1px dashed var(--border-hover);
-    border-radius: var(--radius);
-    padding: 52px 32px;
-    text-align: center;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    position: relative;
-    background: var(--surface);
+    position: relative; overflow: hidden; text-align: center; cursor: pointer;
+    padding: clamp(32px, 6vw, 56px) 20px;
+    border: 1.5px dashed var(--border-strong); border-radius: var(--radius);
+    background: var(--bg2);
+    transition: border-color .25s, background .25s, transform .25s var(--ease);
   }
-
-  .dropzone:hover, .dropzone.drag-over {
-    border-color: var(--accent);
-    background: var(--accent-dim);
+  .dropzone:hover, .dropzone.drag { border-color: var(--accent); background: var(--accent-soft); }
+  .dropzone.drag { transform: scale(1.01); }
+  .dropzone.drag .dz-icon { animation: bob .6s ease-in-out infinite alternate; }
+  .dz-icon {
+    width: 64px; height: 64px; margin: 0 auto 16px; border-radius: 20px; display: grid; place-items: center;
+    font-size: 26px; background: var(--accent); color: var(--on-accent);
+    box-shadow: 0 12px 30px -10px var(--accent);
+    animation: bob 2.6s ease-in-out infinite alternate;
   }
-
-  .dropzone.drag-over { transform: scale(1.005); }
-
-  .drop-icon {
-    width: 44px;
-    height: 44px;
-    margin: 0 auto 16px;
-    opacity: 0.4;
-  }
-
-  .dropzone h2 {
-    font-family: 'Roboto', sans-serif;
-    font-weight: 700;
-    font-size: 18px;
-    margin-bottom: 8px;
-  }
-
-  .dropzone p {
-    font-size: 12px;
-    color: var(--text-dim);
-    line-height: 1.6;
-  }
-
-  .drop-formats {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    justify-content: center;
-    margin-top: 16px;
-  }
-
-  .fmt-tag {
-    font-size: 10px;
-    padding: 3px 8px;
-    border-radius: 3px;
-    background: var(--border);
-    color: var(--text-muted);
-    letter-spacing: 0.5px;
-  }
-
+  @keyframes bob { to { transform: translateY(-6px); } }
+  .dropzone h2 { font-family: var(--display); font-size: clamp(18px, 2.4vw, 22px); margin-bottom: 6px; }
+  .dropzone p { font-size: 13px; color: var(--muted); line-height: 1.6; }
+  .formats { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin-top: 16px; }
+  .formats span { font-size: 11px; font-weight: 600; letter-spacing: .5px; padding: 4px 9px; border-radius: 6px; background: var(--surface-solid); border: 1px solid var(--border); color: var(--muted); }
   #file-input { display: none; }
 
-  /* FILE QUEUE */
-  .file-queue {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
+  /* PREVIEW */
+  .preview-wrap {
+    position: relative; border-radius: var(--radius-sm); overflow: hidden; min-height: 220px;
+    display: grid; place-items: center;
+    background-color: var(--bg2);
+    background-image: linear-gradient(45deg, var(--border) 25%, transparent 25%), linear-gradient(-45deg, var(--border) 25%, transparent 25%),
+      linear-gradient(45deg, transparent 75%, var(--border) 75%), linear-gradient(-45deg, transparent 75%, var(--border) 75%);
+    background-size: 20px 20px; background-position: 0 0, 0 10px, 10px -10px, -10px 0;
   }
+  #preview { display: none; max-width: 100%; max-height: min(460px, 60vh); width: auto; height: auto; animation: fadeIn .4s var(--ease); }
+  .preview-wrap.has #preview { display: block; }
+  .preview-wrap.has .preview-empty { display: none; }
+  .preview-empty { text-align: center; color: var(--faint); font-size: 13px; padding: 24px; }
+  .preview-empty i { font-size: 30px; display: block; margin-bottom: 10px; opacity: .6; }
+  @keyframes fadeIn { from { opacity: 0; } }
 
-  .file-item {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 12px 16px;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    transition: border-color 0.2s;
+  /* QUEUE */
+  .progress { height: 4px; border-radius: 4px; background: var(--bg2); overflow: hidden; margin-bottom: 14px; opacity: 0; transition: opacity .3s; }
+  .progress.on { opacity: 1; }
+  .progress > div {
+    height: 100%; width: 0; border-radius: 4px; transition: width .35s var(--ease);
+    background: repeating-linear-gradient(-45deg, var(--accent) 0 10px, color-mix(in srgb, var(--accent) 70%, white) 10px 20px);
+    background-size: 28px 28px; animation: stripes .8s linear infinite;
   }
+  @keyframes stripes { to { background-position: 28px 0; } }
+  .queue { display: flex; flex-direction: column; gap: 10px; }
+  .empty { text-align: center; padding: 28px 10px; color: var(--faint); font-size: 13px; line-height: 1.7; }
+  .empty i { font-size: 26px; display: block; margin-bottom: 8px; opacity: .5; }
 
-  .file-item.done { border-color: var(--accent); }
-  .file-item.processing { border-color: #555; }
-  .file-item.error { border-color: var(--danger); }
-
-  .file-thumb {
-    width: 42px;
-    height: 42px;
-    object-fit: cover;
-    border-radius: 3px;
-    flex-shrink: 0;
-    background: var(--border);
+  .item {
+    display: grid; grid-template-columns: 52px minmax(0, 1fr) auto; align-items: center; gap: 14px;
+    padding: 12px; border-radius: 12px; background: var(--bg2); border: 1px solid var(--border);
+    cursor: pointer; animation: slideIn .45s var(--ease) both;
+    transition: border-color .25s, transform .2s var(--ease), background .25s;
   }
-
-  .file-info { flex: 1; min-width: 0; }
-  .file-name {
-    font-size: 12px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    margin-bottom: 3px;
+  .item:hover { border-color: var(--border-strong); transform: translateY(-1px); }
+  .item.selected { border-color: var(--accent-line); background: var(--accent-soft); }
+  .item.leaving { animation: slideOut .3s var(--ease) forwards; pointer-events: none; }
+  @keyframes slideIn { from { opacity: 0; transform: translateX(-14px) scale(.98); } }
+  @keyframes slideOut { to { opacity: 0; transform: translateX(24px) scale(.96); } }
+  .thumb { width: 52px; height: 52px; border-radius: 10px; object-fit: cover; background: var(--border); display: block; }
+  .info { min-width: 0; }
+  .name { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .meta { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+  .chip { display: inline-flex; align-items: center; gap: 4px; font-size: 10.5px; font-weight: 600; padding: 2px 7px; border-radius: 6px; animation: pop .35s var(--spring) both; }
+  .chip.warn { background: color-mix(in srgb, var(--warn) 15%, transparent); color: var(--warn); }
+  .chip.ok { background: color-mix(in srgb, var(--ok) 15%, transparent); color: var(--ok); }
+  .chip.dim { background: var(--border); color: var(--muted); }
+  .item-side, .btns { display: flex; align-items: center; gap: 6px; }
+  .status { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 600; padding: 5px 9px; border-radius: 999px; white-space: nowrap; }
+  .status[data-s="pending"] { background: var(--border); color: var(--muted); }
+  .status[data-s="processing"] { background: var(--accent-soft); color: var(--accent); }
+  .status[data-s="done"] { background: color-mix(in srgb, var(--ok) 15%, transparent); color: var(--ok); }
+  .status[data-s="done"] i { animation: pop .45s var(--spring); }
+  .status[data-s="error"] { background: color-mix(in srgb, var(--danger) 15%, transparent); color: var(--danger); }
+  .icon-btn {
+    width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; color: var(--muted); font-size: 14px;
+    transition: background .2s, color .2s, transform .15s;
   }
-  .file-meta { font-size: 10px; color: var(--text-dim); }
-
-  .file-status {
-    font-size: 10px;
-    padding: 3px 8px;
-    border-radius: 3px;
-    flex-shrink: 0;
-  }
-  .file-status.pending { background: var(--border); color: var(--text-muted); }
-  .file-status.processing { background: #1a1a00; color: #c8f04a88; }
-  .file-status.done { background: rgba(200,240,74,0.12); color: var(--accent); }
-  .file-status.error { background: rgba(255,77,77,0.12); color: var(--danger); }
-
-  .file-remove {
-    background: none;
-    border: none;
-    color: var(--text-muted);
-    cursor: pointer;
-    font-size: 16px;
-    line-height: 1;
-    padding: 2px 4px;
-    transition: color 0.15s;
-  }
-  .file-remove:hover { color: var(--danger); }
-
-  /* ── RIGHT PANEL ── */
-  .panel-right {
-    padding: 40px 32px;
-    display: flex;
-    flex-direction: column;
-    gap: 32px;
-  }
+  .icon-btn:hover { background: var(--border); color: var(--text); }
+  .icon-btn:active { transform: scale(.9); }
+  .icon-btn.rm:hover { color: var(--danger); background: color-mix(in srgb, var(--danger) 12%, transparent); }
+  .icon-btn.dl { color: var(--accent); }
+  .icon-btn[hidden] { display: none; }
+  .text-btn { font-size: 13px; color: var(--muted); display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 8px; transition: color .2s, background .2s; }
+  .text-btn:hover { color: var(--danger); background: color-mix(in srgb, var(--danger) 10%, transparent); }
+  .text-btn[hidden] { display: none; }
 
   /* CONTROLS */
-  .control-group { display: flex; flex-direction: column; gap: 12px; }
-
-  .control-row {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
+  .controls { display: flex; flex-direction: column; gap: 18px; }
+  .field { display: flex; flex-direction: column; gap: 8px; }
+  .field-label { display: flex; align-items: center; justify-content: space-between; font-size: 13px; font-weight: 500; color: var(--muted); }
+  .field-label output { font-weight: 700; color: var(--accent); font-variant-numeric: tabular-nums; }
+  .input-wrap { position: relative; }
+  .input-wrap i { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--faint); pointer-events: none; transition: color .2s; }
+  .input-wrap:focus-within i { color: var(--accent); }
+  input[type="text"] {
+    width: 100%; font-size: 16px; /* 16px = no iOS focus zoom */
+    padding: 12px 14px 12px 40px; border-radius: 12px; outline: none;
+    background: var(--bg2); border: 1px solid var(--border);
+    transition: border-color .2s, box-shadow .2s;
   }
-
-  .control-label {
-    font-size: 11px;
-    color: var(--text-dim);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-
-  .control-label span {
-    font-size: 11px;
-    color: var(--accent);
-    font-weight: 500;
-  }
-
-  input[type="text"],
-  input[type="number"],
-  select {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    color: var(--text);
-    font-family: 'Roboto', sans-serif;
-    font-size: 13px;
-    padding: 10px 12px;
-    border-radius: var(--radius);
-    width: 100%;
-    outline: none;
-    transition: border-color 0.2s;
-  }
-
-  input[type="text"]:focus,
-  input[type="number"]:focus,
-  select:focus { border-color: var(--accent); }
-
-  select option { background: #111; }
+  input[type="text"]:focus { border-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft); }
 
   input[type="range"] {
-    -webkit-appearance: none;
-    appearance: none;
-    width: 100%;
-    height: 2px;
-    background: var(--border);
-    outline: none;
-    border-radius: 2px;
-    cursor: pointer;
+    -webkit-appearance: none; appearance: none; width: 100%; height: 6px; border-radius: 6px; cursor: pointer; outline: none;
+    background: linear-gradient(to right, var(--accent) var(--p, 50%), var(--border) var(--p, 50%));
+    touch-action: pan-y;
   }
+  input[type="range"]:disabled { opacity: .35; cursor: not-allowed; }
   input[type="range"]::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    width: 14px;
-    height: 14px;
-    border-radius: 50%;
-    background: var(--accent);
-    cursor: pointer;
-    transition: transform 0.15s;
+    -webkit-appearance: none; width: 20px; height: 20px; border-radius: 50%;
+    background: var(--surface-solid); border: 3px solid var(--accent); box-shadow: 0 2px 8px rgba(0,0,0,.25);
+    transition: transform .2s var(--spring);
   }
-  input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.3); }
+  input[type="range"]::-moz-range-thumb { width: 14px; height: 14px; border-radius: 50%; background: var(--surface-solid); border: 3px solid var(--accent); }
+  input[type="range"]:active::-webkit-slider-thumb { transform: scale(1.25); }
+  input[type="range"]:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 5px var(--accent-soft); }
 
-  /* TOGGLE */
-  .toggle-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 12px 14px;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    cursor: pointer;
-    transition: border-color 0.2s;
+  .colors { display: flex; gap: 10px; flex-wrap: wrap; }
+  .colors > input { position: absolute; opacity: 0; pointer-events: none; }
+  .colors label {
+    position: relative; width: 38px; height: 38px; border-radius: 12px; cursor: pointer; background: var(--sw);
+    border: 1px solid var(--border-strong); display: grid; place-items: center; overflow: hidden;
+    transition: transform .25s var(--spring), box-shadow .25s;
   }
-  .toggle-row:hover { border-color: var(--border-hover); }
-  .toggle-label { font-size: 12px; }
-  .toggle-sub { font-size: 10px; color: var(--text-dim); margin-top: 2px; }
+  .colors label:hover { transform: translateY(-2px); }
+  .colors > input:checked + label { box-shadow: 0 0 0 2px var(--surface-solid), 0 0 0 4px var(--accent); }
+  .colors > input:focus-visible + label { outline: 2px solid var(--accent); outline-offset: 4px; }
+  .colors label.custom { background: conic-gradient(red, yellow, lime, aqua, blue, magenta, red); }
+  .colors label.custom input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+  .colors label.custom i { color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,.6); pointer-events: none; }
 
-  .toggle-switch {
-    width: 36px;
-    height: 20px;
-    background: var(--border);
-    border-radius: 10px;
-    position: relative;
-    transition: background 0.2s;
-    flex-shrink: 0;
+  .toggle {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px; cursor: pointer;
+    padding: 12px 14px; border-radius: 12px; background: var(--bg2); border: 1px solid var(--border); transition: border-color .2s;
   }
-  .toggle-switch.on { background: var(--accent); }
-  .toggle-switch::after {
-    content: '';
-    position: absolute;
-    width: 14px;
-    height: 14px;
-    border-radius: 50%;
-    background: #fff;
-    top: 3px;
-    left: 3px;
-    transition: transform 0.2s;
-  }
-  .toggle-switch.on::after { transform: translateX(16px); }
+  .toggle:hover { border-color: var(--border-strong); }
+  .toggle input { position: absolute; opacity: 0; pointer-events: none; }
+  .toggle .t-text { font-size: 14px; font-weight: 500; }
+  .toggle .t-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .switch { flex-shrink: 0; width: 42px; height: 24px; border-radius: 999px; background: var(--border-strong); position: relative; transition: background .25s; }
+  .switch::after { content: ''; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: #fff; transition: transform .3s var(--spring); box-shadow: 0 1px 4px rgba(0,0,0,.3); }
+  .toggle input:checked ~ .switch { background: var(--accent); }
+  .toggle input:checked ~ .switch::after { transform: translateX(18px); }
+  .toggle input:focus-visible ~ .switch { outline: 2px solid var(--accent); outline-offset: 2px; }
 
-  /* DIVIDER */
-  .divider {
-    height: 1px;
-    background: var(--border);
+  .privacy {
+    display: flex; gap: 12px; padding: 14px; border-radius: 12px; font-size: 12.5px; line-height: 1.55; color: var(--muted);
+    background: var(--accent-soft); border: 1px solid var(--accent-line);
   }
+  .privacy i { color: var(--accent); font-size: 16px; margin-top: 2px; }
+  .privacy b { color: var(--text); }
 
-  /* PROCESS BTN */
-  .btn-process {
-    width: 100%;
-    padding: 14px;
-    background: var(--accent);
-    color: #0a0a0a;
-    font-family: 'Roboto', sans-serif;
-    font-weight: 700;
-    font-size: 14px;
-    letter-spacing: 0.5px;
-    border: none;
-    border-radius: var(--radius);
-    cursor: pointer;
-    transition: opacity 0.2s, transform 0.15s;
+  /* ACTIONS */
+  .actions { display: flex; flex-direction: column; gap: 10px; animation: rise .6s var(--ease) both; animation-delay: .3s; }
+  .btn {
+    position: relative; overflow: hidden; width: 100%;
+    display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+    padding: 15px 18px; border-radius: 14px; font-weight: 700; font-size: 15px;
+    transition: transform .2s var(--ease), box-shadow .25s, opacity .2s, background .3s;
   }
-  .btn-process:hover { opacity: 0.9; transform: translateY(-1px); }
-  .btn-process:active { transform: translateY(0); }
-  .btn-process:disabled { opacity: 0.35; cursor: not-allowed; transform: none; }
+  .btn-primary { background: var(--accent); color: var(--on-accent); box-shadow: 0 12px 30px -12px var(--accent); }
+  .btn-primary::after {
+    content: ''; position: absolute; top: 0; left: -60%; width: 40%; height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,.45), transparent); transform: skewX(-20deg);
+  }
+  .btn-primary:not(:disabled):hover::after { animation: shine .9s var(--ease); }
+  @keyframes shine { to { left: 130%; } }
+  .btn:not(:disabled):hover { transform: translateY(-2px); }
+  .btn:not(:disabled):active { transform: translateY(0) scale(.98); }
+  .btn:disabled { opacity: .4; cursor: not-allowed; box-shadow: none; }
+  .btn-ghost { background: var(--accent-soft); color: var(--accent); border: 1px solid var(--accent-line); font-size: 14px; padding: 13px 18px; }
+  .btn-ghost[hidden] { display: none; }
 
-  .btn-download-all {
-    width: 100%;
-    padding: 12px;
-    background: transparent;
-    color: var(--accent);
-    font-family: 'Roboto', sans-serif;
-    font-size: 12px;
-    border-radius: var(--radius);
-    cursor: pointer;
-    transition: background 0.2s;
-    display: none;
+  /* MODAL */
+  .modal {
+    position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; padding: 20px;
+    background: rgba(0,0,0,.82); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+    opacity: 0; visibility: hidden; transition: opacity .3s var(--ease), visibility .3s;
   }
-  .btn-download-all:hover { background: var(--accent-dim); }
-  .btn-download-all.visible { display: block; }
-
-  /* STATS */
-  .stats {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 8px;
-  }
-  .stat-box {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 12px;
-  }
-  .stat-val {
-    font-family: 'Roboto', sans-serif;
-    font-size: 22px;
-    font-weight: 700;
-    color: var(--accent);
-  }
-  .stat-lbl { font-size: 10px; color: var(--text-muted); margin-top: 2px; }
-
-  /* EMPTY STATE */
-  .empty-hint {
-    text-align: center;
-    color: var(--text-muted);
-    font-size: 12px;
-    padding: 32px 0;
-    line-height: 1.7;
-    display: none;
-  }
-
-  /* PROGRESS BAR */
-  .progress-bar-wrap {
-    height: 2px;
-    background: var(--border);
-    border-radius: 2px;
-    overflow: hidden;
-    display: none;
-  }
-  .progress-bar-fill {
-    height: 100%;
-    background: var(--accent);
-    width: 0%;
-    transition: width 0.3s ease;
-  }
-
-  /* PREVIEW MODAL */
-  .modal-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.88);
-    z-index: 100;
-    display: none;
-    align-items: center;
-    justify-content: center;
-    backdrop-filter: blur(4px);
-  }
-  .modal-overlay.open { display: flex; }
-  .modal-img {
-    max-width: 90vw;
-    max-height: 85vh;
-    border-radius: 4px;
-    box-shadow: 0 24px 80px rgba(0,0,0,0.7);
-  }
+  .modal.open { opacity: 1; visibility: visible; }
+  .modal img { max-width: 100%; max-height: 86vh; max-height: 86dvh; border-radius: 12px; box-shadow: 0 30px 90px rgba(0,0,0,.7); transform: scale(.92); transition: transform .4s var(--spring); }
+  .modal.open img { transform: scale(1); }
   .modal-close {
-    position: absolute;
-    top: 24px;
-    right: 28px;
-    background: none;
-    border: none;
-    color: #fff;
-    font-size: 28px;
-    cursor: pointer;
-    line-height: 1;
-    opacity: 0.6;
-    transition: opacity 0.15s;
+    position: absolute; top: max(16px, env(safe-area-inset-top)); right: 16px;
+    width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center;
+    background: rgba(255,255,255,.12); color: #fff; font-size: 18px; transition: background .2s, transform .2s;
   }
-  .modal-close:hover { opacity: 1; }
+  .modal-close:hover { background: rgba(255,255,255,.22); transform: rotate(90deg); }
 
-  /* SCROLLBAR */
-  ::-webkit-scrollbar { width: 4px; }
-  ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+  /* TOAST */
+  .toasts { position: fixed; z-index: 120; left: 50%; transform: translateX(-50%); bottom: 24px; display: flex; flex-direction: column; gap: 8px; align-items: center; pointer-events: none; width: max-content; max-width: calc(100vw - 32px); }
+  .toast {
+    display: flex; align-items: center; gap: 10px; padding: 11px 16px; border-radius: 12px; font-size: 13.5px;
+    background: var(--surface-solid); border: 1px solid var(--border); box-shadow: var(--shadow);
+    animation: toastIn .4s var(--spring) both;
+  }
+  .toast i { color: var(--accent); }
+  .toast.out { animation: toastOut .3s var(--ease) forwards; }
+  @keyframes toastIn { from { opacity: 0; transform: translateY(16px) scale(.95); } }
+  @keyframes toastOut { to { opacity: 0; transform: translateY(8px); } }
 
-  @media (max-width: 860px) {
-    main { grid-template-columns: 1fr; }
-    .panel-right { border-top: 1px solid var(--border); }
-    header { padding: 18px 24px; }
-    .panel-left, .panel-right { padding: 28px 24px; }
+  ::-webkit-scrollbar { width: 8px; }
+  ::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 8px; }
+
+  /* ── TABLET ── */
+  @media (max-width: 1023px) {
+    .layout { grid-template-columns: 1fr; }
+    .side { position: static; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .side .actions { grid-column: 1 / -1; flex-direction: row; }
+  }
+  /* ── PHONE ── */
+  @media (max-width: 639px) {
+    .pill { display: none; }
+    .top-actions { width: 100%; justify-content: space-between; }
+    .seg.theme label span { display: none; }
+    .layout { padding-top: 18px; padding-bottom: calc(110px + env(safe-area-inset-bottom)); gap: 16px; }
+    .col { gap: 16px; }
+    .side { display: flex; }
+    .card { padding: 18px; }
+    .item { grid-template-columns: 46px minmax(0, 1fr); gap: 12px; }
+    .thumb { width: 46px; height: 46px; }
+    .item-side { grid-column: 1 / -1; justify-content: space-between; }
+    .side .actions {
+      position: fixed; z-index: 30; left: 0; right: 0; bottom: 0; flex-direction: row; gap: 8px;
+      padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+      background: color-mix(in srgb, var(--bg) 80%, transparent);
+      backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+      border-top: 1px solid var(--border);
+      animation: barIn .5s var(--ease) both .2s;
+    }
+    .btn-ghost { width: auto; flex-shrink: 0; }
+    .btn-ghost .lbl { display: none; }
+    .toasts { bottom: calc(96px + env(safe-area-inset-bottom)); }
+  }
+  @keyframes barIn { from { transform: translateY(100%); } }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
   }
 </style>
 </head>
 <body>
+<div class="ambient" aria-hidden="true"><span></span><span></span></div>
 
-<header>
-  <div class="logo">RTDN<span> | Free Watermark</span></div>
-  <div class="badge">Local · Private · No Upload</div>
+<header class="topbar">
+  <div class="brand">
+    <div class="brand-mark"><i class="fa-solid fa-stamp"></i></div>
+    <div><b>RTDN</b><small>Free Watermark</small></div>
+  </div>
+  <div class="top-actions">
+    <span class="pill"><i class="fa-solid fa-shield-halved"></i> Local · Private · No upload</span>
+    <div class="palettes" role="radiogroup" aria-label="Color palette" id="palettes">
+      <input type="radio" name="palette" id="p-lime" value="lime"><label for="p-lime" style="--sw:#c8f04a" title="Lime"></label>
+      <input type="radio" name="palette" id="p-violet" value="violet"><label for="p-violet" style="--sw:#a78bfa" title="Violet"></label>
+      <input type="radio" name="palette" id="p-ocean" value="ocean"><label for="p-ocean" style="--sw:#38bdf8" title="Ocean"></label>
+      <input type="radio" name="palette" id="p-sunset" value="sunset"><label for="p-sunset" style="--sw:#fb923c" title="Sunset"></label>
+      <input type="radio" name="palette" id="p-rose" value="rose"><label for="p-rose" style="--sw:#fb7185" title="Rose"></label>
+      <input type="radio" name="palette" id="p-mint" value="mint"><label for="p-mint" style="--sw:#34d399" title="Mint"></label>
+    </div>
+    <div class="seg theme" role="radiogroup" aria-label="Theme" id="theme">
+      <input type="radio" name="theme" id="t-auto" value="auto"><label for="t-auto" title="Follow system"><i class="fa-solid fa-circle-half-stroke"></i><span>Auto</span></label>
+      <input type="radio" name="theme" id="t-light" value="light"><label for="t-light" title="Light"><i class="fa-solid fa-sun"></i><span>Light</span></label>
+      <input type="radio" name="theme" id="t-dark" value="dark"><label for="t-dark" title="Dark"><i class="fa-solid fa-moon"></i><span>Dark</span></label>
+    </div>
+  </div>
 </header>
 
-<main>
-  <!-- LEFT: Drop + Queue -->
-  <div class="panel-left">
-    <div>
-      <div class="section-label">01 — Select Images</div>
-      <div class="dropzone" id="dropzone">
-        <svg class="drop-icon" viewBox="0 0 44 44" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <rect x="4" y="10" width="36" height="28" rx="3" stroke="#e8e8e8" stroke-width="1.5"/>
-          <circle cx="15" cy="20" r="3" stroke="#e8e8e8" stroke-width="1.5"/>
-          <path d="M4 30l9-8 7 7 5-5 10 8" stroke="#e8e8e8" stroke-width="1.5" stroke-linejoin="round"/>
-          <path d="M22 4v10M18 8l4-4 4 4" stroke="#c8f04a" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
+<main class="layout">
+  <section class="col">
+    <div class="card" style="--d:.05s">
+      <div class="card-head">
+        <div class="card-title"><span class="num">01</span> Select images</div>
+      </div>
+      <div class="dropzone" id="dropzone" role="button" tabindex="0" aria-label="Add images">
+        <div class="dz-icon"><i class="fa-solid fa-cloud-arrow-up"></i></div>
         <h2>Drop images here</h2>
-        <p>or click to browse files<br>All images processed locally — nothing leaves your device</p>
-        <div class="drop-formats">
-          <span class="fmt-tag">JPG</span><span class="fmt-tag">PNG</span>
-          <span class="fmt-tag">WEBP</span><span class="fmt-tag">BMP</span>
-          <span class="fmt-tag">GIF</span><span class="fmt-tag">TIFF</span>
-          <span class="fmt-tag">HEIC*</span>
+        <p>or tap to browse · paste with Ctrl/⌘ + V<br>Everything is processed on your device</p>
+        <div class="formats">
+          <span>JPG</span><span>PNG</span><span>WEBP</span><span>AVIF</span><span>GIF</span><span>BMP</span><span title="Safari only">HEIC*</span>
         </div>
-        <input type="file" id="file-input" multiple accept="image/*">
+        <input type="file" id="file-input" multiple accept="image/*,.heic,.heif">
       </div>
     </div>
 
-    <div>
-      <div class="section-label">02 — Queue <span id="queue-count" style="color:var(--text-dim)"></span></div>
-      <div class="progress-bar-wrap" id="progress-wrap">
-        <div class="progress-bar-fill" id="progress-fill"></div>
+    <div class="card" style="--d:.12s">
+      <div class="card-head">
+        <div class="card-title"><span class="num">02</span> Live preview</div>
+        <span class="muted" id="preview-name"></span>
       </div>
-      <div class="file-queue" id="file-queue">
-        <p class="empty-hint" id="empty-hint" style="display:block">
-          No images yet.<br>Add some files above to get started.
-        </p>
+      <div class="preview-wrap" id="preview-wrap">
+        <canvas id="preview"></canvas>
+        <div class="preview-empty"><i class="fa-regular fa-image"></i>Add an image to see the watermark live</div>
       </div>
     </div>
 
-    <div class="stats">
-      <div class="stat-box">
-        <div class="stat-val" id="stat-total">0</div>
-        <div class="stat-lbl">Total images</div>
+    <div class="card" style="--d:.19s">
+      <div class="card-head">
+        <div class="card-title"><span class="num">03</span> Queue <span class="muted" id="queue-count"></span></div>
+        <button class="text-btn" id="btn-clear" hidden><i class="fa-solid fa-trash-can"></i> Clear all</button>
       </div>
-      <div class="stat-box">
-        <div class="stat-val" id="stat-done">0</div>
-        <div class="stat-lbl">Processed</div>
+      <div class="progress" id="progress"><div></div></div>
+      <div class="queue" id="queue">
+        <div class="empty" id="empty"><i class="fa-solid fa-layer-group"></i>No images yet.<br>Add some files above to get started.</div>
       </div>
     </div>
-  </div>
+  </section>
 
-  <!-- RIGHT: Settings -->
-  <div class="panel-right">
-    <div>
-      <div class="section-label">03 — Watermark Text</div>
-      <div class="control-group">
-        <div class="control-row">
-          <div class="control-label">Text</div>
-          <input type="text" id="wm-text" value="© Your Name" placeholder="© Your Name 2025">
+  <aside class="col side">
+    <div class="card" style="--d:.1s">
+      <div class="card-head"><div class="card-title"><span class="num"><i class="fa-solid fa-font"></i></span> Watermark</div></div>
+      <div class="controls">
+        <div class="field">
+          <label class="field-label" for="wm-text">Text</label>
+          <div class="input-wrap"><i class="fa-solid fa-copyright"></i><input type="text" id="wm-text" value="© Your Name" placeholder="© Your Name 2026" autocomplete="off" maxlength="80"></div>
         </div>
-        <div class="control-row">
-          <div class="control-label">Font size <span id="size-val">50</span>px</div>
-          <input type="range" id="wm-size" min="12" max="80" value="50">
+        <div class="field">
+          <label class="field-label" for="wm-size">Size <output id="wm-size-v">50</output></label>
+          <input type="range" id="wm-size" min="12" max="120" value="50">
         </div>
-        <div class="control-row">
-          <div class="control-label">Opacity <span id="opacity-val">40</span>%</div>
-          <input type="range" id="wm-opacity" min="4" max="40" value="40">
+        <div class="field">
+          <label class="field-label" for="wm-opacity">Opacity <output id="wm-opacity-v">40%</output></label>
+          <input type="range" id="wm-opacity" min="4" max="80" value="40">
         </div>
       </div>
     </div>
 
-    <div>
-      <div class="section-label">04 — Layout</div>
-      <div class="control-group">
-        <div class="control-row">
-          <div class="control-label">Angle <span id="angle-val">30</span>°</div>
-          <input type="range" id="wm-angle" min="10" max="60" value="30">
+    <div class="card" style="--d:.17s">
+      <div class="card-head"><div class="card-title"><span class="num"><i class="fa-solid fa-table-cells"></i></span> Layout</div></div>
+      <div class="controls">
+        <div class="field">
+          <label class="field-label" for="wm-angle">Angle <output id="wm-angle-v">30°</output></label>
+          <input type="range" id="wm-angle" min="0" max="90" value="30">
         </div>
-        <div class="control-row">
-          <div class="control-label">Density <span id="density-val">medium</span></div>
-          <select id="wm-density">
-            <option value="120">Sparse</option>
-            <option value="200" selected>Medium</option>
-            <option value="300">Dense</option>
-          </select>
-        </div>
-        <div class="control-row">
-          <div class="control-label">Color</div>
-          <select id="wm-color">
-            <option value="255,255,255">White</option>
-            <option value="0,0,0">Black</option>
-            <option value="200,240,74">Lime</option>
-            <option value="150,150,150">Grey</option>
-          </select>
-        </div>
-      </div>
-    </div>
-
-    <div>
-      <div class="section-label">05 — Output</div>
-      <div class="control-group">
-        <div class="control-row">
-          <div class="control-label">Format</div>
-          <select id="out-format">
-            <option value="image/jpeg">JPEG (lossy, smaller)</option>
-            <option value="image/png" selected>PNG (lossless)</option>
-            <option value="image/webp">WebP (modern)</option>
-          </select>
-        </div>
-        <div class="control-row">
-          <div class="control-label">Quality <span id="quality-val">100</span>%</div>
-          <input type="range" id="out-quality" min="70" max="100" value="100">
-        </div>
-
-        <div class="toggle-row" id="toggle-meta" onclick="toggleMeta()">
-          <div>
-            <div class="toggle-label">Strip Metadata</div>
-            <div class="toggle-sub">Remove EXIF, GPS, camera info</div>
+        <div class="field">
+          <span class="field-label">Density</span>
+          <div class="seg full" role="radiogroup" aria-label="Density">
+            <input type="radio" name="density" id="d-sparse" value="320"><label for="d-sparse">Sparse</label>
+            <input type="radio" name="density" id="d-medium" value="200" checked><label for="d-medium">Medium</label>
+            <input type="radio" name="density" id="d-dense" value="100"><label for="d-dense">Dense</label>
           </div>
-          <div class="toggle-switch on" id="toggle-meta-sw"></div>
+        </div>
+        <div class="field">
+          <span class="field-label">Color</span>
+          <div class="colors" role="radiogroup" aria-label="Watermark color">
+            <input type="radio" name="color" id="c-white" value="#ffffff" checked><label for="c-white" style="--sw:#ffffff" title="White"></label>
+            <input type="radio" name="color" id="c-black" value="#000000"><label for="c-black" style="--sw:#000000" title="Black"></label>
+            <input type="radio" name="color" id="c-grey" value="#9ca3af"><label for="c-grey" style="--sw:#9ca3af" title="Grey"></label>
+            <input type="radio" name="color" id="c-custom" value="custom"><label for="c-custom" class="custom" title="Custom color"><i class="fa-solid fa-eye-dropper"></i><input type="color" id="wm-custom" value="#c8f04a" aria-label="Pick custom color"></label>
+          </div>
         </div>
       </div>
     </div>
 
-    <div class="divider"></div>
+    <div class="card" style="--d:.24s">
+      <div class="card-head"><div class="card-title"><span class="num"><i class="fa-solid fa-file-export"></i></span> Output &amp; privacy</div></div>
+      <div class="controls">
+        <div class="field">
+          <span class="field-label">Format</span>
+          <div class="seg full" role="radiogroup" aria-label="Output format">
+            <input type="radio" name="format" id="f-jpg" value="image/jpeg"><label for="f-jpg">JPEG</label>
+            <input type="radio" name="format" id="f-png" value="image/png" checked><label for="f-png">PNG</label>
+            <input type="radio" name="format" id="f-webp" value="image/webp"><label for="f-webp">WebP</label>
+          </div>
+        </div>
+        <div class="field">
+          <label class="field-label" for="out-quality">Quality <output id="out-quality-v">95%</output></label>
+          <input type="range" id="out-quality" min="60" max="100" value="95">
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="rand-name">
+          <div><div class="t-text"><i class="fa-solid fa-shuffle"></i>&nbsp; Randomize file names</div><div class="t-sub">Original names can reveal dates or devices</div></div>
+          <span class="switch"></span>
+        </label>
+        <div class="privacy">
+          <i class="fa-solid fa-user-shield"></i>
+          <div>Every export is <b>re-drawn from raw pixels</b>, so all metadata is dropped: <b>EXIF, GPS, camera info, XMP, IPTC, ICC, PNG text chunks</b> and <b>AI provenance tags</b> (C2PA / Content Credentials, Stable Diffusion &amp; ComfyUI prompts, IPTC “AI-generated”). Each file is scanned before and verified clean after.</div>
+        </div>
+      </div>
+    </div>
 
-    <button class="btn-process" id="btn-process" disabled onclick="processAll()">
-      Process Images
-    </button>
-
-    <button class="btn-download-all" id="btn-dl-all" onclick="downloadAll()">
-      ↓ Download All Processed
-    </button>
-  </div>
+    <div class="actions">
+      <button class="btn btn-primary" id="btn-process" disabled><i class="fa-solid fa-wand-magic-sparkles"></i> <span id="process-lbl">Process images</span></button>
+      <button class="btn btn-ghost" id="btn-dl-all" hidden aria-label="Download all"><i class="fa-solid fa-download"></i> <span class="lbl">Download all</span></button>
+    </div>
+  </aside>
 </main>
 
-<!-- MODAL PREVIEW -->
-<div class="modal-overlay" id="modal" onclick="closeModal()">
-  <button class="modal-close">✕</button>
-  <img class="modal-img" id="modal-img" src="" alt="Preview">
+<div class="modal" id="modal" aria-hidden="true">
+  <button class="modal-close" aria-label="Close preview"><i class="fa-solid fa-xmark"></i></button>
+  <img id="modal-img" alt="Preview">
 </div>
-
-<canvas id="wm-canvas" style="display:none"></canvas>
+<div class="toasts" id="toasts" aria-live="polite"></div>
+<canvas id="work" hidden></canvas>
 
 <script>
-  const dropzone = document.getElementById('dropzone');
-  const fileInput = document.getElementById('file-input');
-  const fileQueue = document.getElementById('file-queue');
-  const emptyHint = document.getElementById('empty-hint');
-  const btnProcess = document.getElementById('btn-process');
-  const btnDlAll = document.getElementById('btn-dl-all');
-  const progressWrap = document.getElementById('progress-wrap');
-  const progressFill = document.getElementById('progress-fill');
-  const canvas = document.getElementById('wm-canvas');
-  const ctx = canvas.getContext('2d');
-  const modal = document.getElementById('modal');
-  const modalImg = document.getElementById('modal-img');
+  const $ = s => document.querySelector(s);
+  const root = document.documentElement;
+  const MAX_PIXELS = 16777216;      // iOS Safari canvas cap; bigger images are scaled down to fit
+  const PREVIEW_PIXELS = 1440000;
 
-  let files = [];
-  let results = [];
-  let metaStrip = true;
-
-  // ── RANGE LABELS ──
-  const rangeMap = {
-    'wm-size': 'size-val',
-    'wm-opacity': 'opacity-val',
-    'wm-angle': 'angle-val',
-    'out-quality': 'quality-val'
+  const store = {
+    get(k, d) { try { return localStorage.getItem(k) || d; } catch (e) { return d; } },
+    set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
   };
-  Object.keys(rangeMap).forEach(id => {
-    const el = document.getElementById(id);
-    el.addEventListener('input', () => {
-      document.getElementById(rangeMap[id]).textContent = el.value;
-    });
-  });
 
-  document.getElementById('wm-density').addEventListener('change', function() {
-    const labels = { '120': 'sparse', '200': 'medium', '300': 'dense' };
-    document.getElementById('density-val').textContent = labels[this.value];
-  });
+  // ── NO ZOOM (iOS ignores user-scalable=no, so block gestures too) ──
+  ['gesturestart', 'gesturechange'].forEach(t => document.addEventListener(t, e => e.preventDefault(), { passive: false }));
+  document.addEventListener('touchmove', e => { if (e.touches.length > 1) e.preventDefault(); }, { passive: false });
+  let lastTap = 0;
+  document.addEventListener('touchend', e => {
+    const now = Date.now();
+    if (now - lastTap < 300 && !e.target.closest('input, textarea, select')) e.preventDefault();
+    lastTap = now;
+  }, { passive: false });
+  document.addEventListener('dblclick', e => e.preventDefault(), { passive: false });
 
-  function toggleMeta() {
-    metaStrip = !metaStrip;
-    document.getElementById('toggle-meta-sw').classList.toggle('on', metaStrip);
+  // ── THEME + PALETTE ──
+  const mq = matchMedia('(prefers-color-scheme: dark)');
+  let themePref = store.get('wm-theme', 'auto');
+  function applyTheme() {
+    root.dataset.theme = themePref === 'auto' ? (mq.matches ? 'dark' : 'light') : themePref;
   }
+  mq.addEventListener('change', applyTheme);
+  $('#t-' + themePref).checked = true;
+  $('#theme').addEventListener('change', e => { themePref = e.target.value; store.set('wm-theme', themePref); applyTheme(); });
+  applyTheme();
 
-  // ── DROP ZONE ──
-  dropzone.addEventListener('click', () => fileInput.click());
-  fileInput.addEventListener('change', e => addFiles([...e.target.files]));
+  $('#p-' + (root.dataset.palette || 'lime')).checked = true;
+  $('#palettes').addEventListener('change', e => { root.dataset.palette = e.target.value; store.set('wm-palette', e.target.value); });
 
-  dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('drag-over'); });
-  dropzone.addEventListener('dragleave', () => dropzone.classList.remove('drag-over'));
-  dropzone.addEventListener('drop', e => {
-    e.preventDefault();
-    dropzone.classList.remove('drag-over');
-    addFiles([...e.dataTransfer.files].filter(f => f.type.startsWith('image/')));
+  // ── STATE ──
+  let items = [];       // { id, file, thumbUrl, el, result, status }
+  let selected = null;  // item shown in preview
+  let previewSrc = null, previewFor = null;
+  let busy = false, nextId = 1;
+
+  const queue = $('#queue'), empty = $('#empty');
+  const btnProcess = $('#btn-process'), btnDlAll = $('#btn-dl-all'), btnClear = $('#btn-clear');
+  const progress = $('#progress'), progressFill = progress.firstElementChild;
+  const previewCanvas = $('#preview'), previewWrap = $('#preview-wrap');
+  const work = $('#work');
+  const modal = $('#modal'), modalImg = $('#modal-img');
+
+  // ── CONTROLS ──
+  const ranges = { 'wm-size': v => v, 'wm-opacity': v => v + '%', 'wm-angle': v => v + '°', 'out-quality': v => v + '%' };
+  function paintRange(el) { el.style.setProperty('--p', ((el.value - el.min) / (el.max - el.min) * 100) + '%'); }
+  Object.keys(ranges).forEach(id => {
+    const el = $('#' + id);
+    const sync = () => { $('#' + id + '-v').textContent = ranges[id](el.value); paintRange(el); };
+    el.addEventListener('input', sync); sync();
   });
+  function syncQuality() { $('#out-quality').disabled = $('input[name=format]:checked').value === 'image/png'; }
+  document.querySelectorAll('input[name=format]').forEach(r => r.addEventListener('change', syncQuality));
+  syncQuality();
+  $('#wm-custom').addEventListener('input', () => { $('#c-custom').checked = true; schedulePreview(); });
+  document.querySelector('.side').addEventListener('input', schedulePreview);
+  document.querySelector('.side').addEventListener('change', schedulePreview);
 
-  function addFiles(newFiles) {
-    newFiles.forEach(f => {
-      if (!files.find(x => x.name === f.name && x.size === f.size)) {
-        files.push(f);
-        renderFileItem(f);
-      }
-    });
-    updateUI();
-  }
-
-  function renderFileItem(f) {
-    emptyHint.style.display = 'none';
-    const item = document.createElement('div');
-    item.className = 'file-item';
-    item.dataset.name = f.name;
-
-    const reader = new FileReader();
-    const thumb = document.createElement('img');
-    thumb.className = 'file-thumb';
-    thumb.style.cursor = 'pointer';
-    reader.onload = e => {
-      thumb.src = e.target.result;
-      thumb.onclick = () => { modalImg.src = e.target.result; modal.classList.add('open'); };
+  function hexToRgb(hex) { const n = parseInt(hex.slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255].join(','); }
+  function settings() {
+    let color = $('input[name=color]:checked').value;
+    if (color === 'custom') color = $('#wm-custom').value;
+    return {
+      text: $('#wm-text').value.trim() || '© Watermark',
+      size: +$('#wm-size').value,
+      opacity: +$('#wm-opacity').value / 100,
+      angle: +$('#wm-angle').value * Math.PI / 180,
+      gap: +$('input[name=density]:checked').value,
+      color: hexToRgb(color),
+      format: $('input[name=format]:checked').value,
+      quality: +$('#out-quality').value / 100,
+      randomName: $('#rand-name').checked
     };
-    reader.readAsDataURL(f);
-
-    const size = f.size < 1048576
-      ? (f.size / 1024).toFixed(1) + ' KB'
-      : (f.size / 1048576).toFixed(2) + ' MB';
-
-    item.innerHTML = `
-      <div class="file-info">
-        <div class="file-name">${f.name}</div>
-        <div class="file-meta">${size} · ${f.type || 'image/*'}</div>
-      </div>
-      <div class="file-status pending">pending</div>
-      <button class="file-remove" title="Remove">✕</button>
-    `;
-    item.insertBefore(thumb, item.firstChild);
-    item.querySelector('.file-remove').onclick = () => removeFile(f, item);
-    fileQueue.appendChild(item);
-  }
-
-  function removeFile(f, item) {
-    files = files.filter(x => x !== f);
-    results = results.filter(x => x.name !== f.name);
-    item.remove();
-    if (files.length === 0) emptyHint.style.display = 'block';
-    updateUI();
-  }
-
-  function updateUI() {
-    document.getElementById('queue-count').textContent = files.length ? `(${files.length})` : '';
-    document.getElementById('stat-total').textContent = files.length;
-    document.getElementById('stat-done').textContent = results.length;
-    btnProcess.disabled = files.length === 0;
-    btnDlAll.classList.toggle('visible', results.length > 0);
-  }
-
-  function setItemStatus(name, status) {
-    const item = fileQueue.querySelector(`[data-name="${CSS.escape(name)}"]`);
-    if (!item) return;
-    const s = item.querySelector('.file-status');
-    s.className = `file-status ${status}`;
-    s.textContent = status;
   }
 
   // ── WATERMARK ENGINE ──
-  async function applyWatermark(file) {
-    return new Promise((resolve, reject) => {
-      const img = new Image();
-      const url = URL.createObjectURL(file);
-      img.onload = () => {
-        const w = img.naturalWidth;
-        const h = img.naturalHeight;
-        canvas.width = w;
-        canvas.height = h;
-
-        ctx.clearRect(0, 0, w, h);
-        ctx.drawImage(img, 0, 0);
-        URL.revokeObjectURL(url);
-
-        const text = document.getElementById('wm-text').value || '© Watermark';
-        const fontSize = parseInt(document.getElementById('wm-size').value);
-        const opacity = parseInt(document.getElementById('wm-opacity').value) / 100;
-        const angleDeg = parseInt(document.getElementById('wm-angle').value);
-        const angleRad = (angleDeg * Math.PI) / 180;
-        const gap = parseInt(document.getElementById('wm-density').value);
-        const color = document.getElementById('wm-color').value;
-
-        ctx.save();
-        ctx.font = `${fontSize}px Roboto, sans-serif`;
-        ctx.fillStyle = `rgba(${color},${opacity})`;
-        ctx.textBaseline = 'middle';
-
-        const textWidth = ctx.measureText(text).width;
-        const diag = Math.sqrt(w * w + h * h);
-
-        ctx.translate(w / 2, h / 2);
-        ctx.rotate(angleRad);
-
-        const cols = Math.ceil(diag / (textWidth + gap)) + 2;
-        const rows = Math.ceil(diag / (fontSize + gap)) + 2;
-        const startX = -cols * (textWidth + gap) / 2;
-        const startY = -rows * (fontSize + gap) / 2;
-
-        for (let row = 0; row < rows; row++) {
-          const offsetX = (row % 2 === 0) ? 0 : (textWidth + gap) / 2;
-          for (let col = 0; col < cols; col++) {
-            const x = startX + col * (textWidth + gap) + offsetX;
-            const y = startY + row * (fontSize + gap);
-            ctx.fillText(text, x, y);
-          }
-        }
-
-        ctx.restore();
-
-        const format = document.getElementById('out-format').value;
-        const quality = parseInt(document.getElementById('out-quality').value) / 100;
-
-        // Metadata is naturally stripped by canvas re-export
-        canvas.toBlob(blob => {
-          if (!blob) { reject(new Error('Canvas export failed')); return; }
-          const ext = format === 'image/jpeg' ? '.jpg'
-                    : format === 'image/webp' ? '.webp'
-                    : '.png';
-          const baseName = file.name.replace(/\.[^.]+$/, '');
-          resolve({ name: baseName + '_marked' + ext, blob, url: URL.createObjectURL(blob) });
-        }, format, quality);
-      };
-      img.onerror = () => reject(new Error('Image load failed'));
-      img.src = url;
-    });
+  // Size and gap are relative to a 1000px image, so the look is the same on any resolution.
+  function drawWatermark(ctx, w, h, s) {
+    const k = Math.max(w, h) / 1000;
+    const fs = s.size * k, gap = s.gap * k;
+    ctx.save();
+    ctx.font = `600 ${fs}px Inter, system-ui, sans-serif`;
+    ctx.fillStyle = `rgba(${s.color},${s.opacity})`;
+    ctx.textBaseline = 'middle';
+    const stepX = ctx.measureText(s.text).width + gap, stepY = fs + gap;
+    const diag = Math.hypot(w, h);
+    const cols = Math.ceil(diag / stepX) + 2, rows = Math.ceil(diag / stepY) + 2;
+    ctx.translate(w / 2, h / 2);
+    ctx.rotate(-s.angle);
+    const x0 = -cols * stepX / 2, y0 = -rows * stepY / 2;
+    for (let r = 0; r < rows; r++) {
+      const off = r % 2 ? stepX / 2 : 0;
+      for (let c = 0; c < cols; c++) ctx.fillText(s.text, x0 + c * stepX + off, y0 + r * stepY);
+    }
+    ctx.restore();
   }
 
-  // ── PROCESS ALL ──
-  async function processAll() {
-    if (files.length === 0) return;
-    results = [];
-    btnProcess.disabled = true;
-    progressWrap.style.display = 'block';
-    btnDlAll.classList.remove('visible');
-
-    for (let i = 0; i < files.length; i++) {
-      const f = files[i];
-      setItemStatus(f.name, 'processing');
-      try {
-        const result = await applyWatermark(f);
-        results.push(result);
-        setItemStatus(f.name, 'done');
-
-        // Update thumb with processed version
-        const item = fileQueue.querySelector(`[data-name="${CSS.escape(f.name)}"]`);
-        if (item) {
-          const thumb = item.querySelector('.file-thumb');
-          const oldUrl = thumb.src;
-          thumb.src = result.url;
-          thumb.onclick = () => { modalImg.src = result.url; modal.classList.add('open'); };
-          if (oldUrl.startsWith('blob:')) URL.revokeObjectURL(oldUrl);
-        }
-      } catch (e) {
-        setItemStatus(f.name, 'error');
-        console.error(e);
-      }
-
-      progressFill.style.width = ((i + 1) / files.length * 100) + '%';
-      document.getElementById('stat-done').textContent = results.length;
+  async function loadImage(file) {
+    try { return await createImageBitmap(file, { imageOrientation: 'from-image' }); }
+    catch (e) {
+      return new Promise((res, rej) => {
+        const img = new Image(), u = URL.createObjectURL(file);
+        img.onload = () => { URL.revokeObjectURL(u); res(img); };
+        img.onerror = () => { URL.revokeObjectURL(u); rej(new Error('Unsupported format')); };
+        img.src = u;
+      });
     }
+  }
 
-    btnProcess.disabled = false;
-    if (results.length > 0) {
-      btnDlAll.classList.add('visible');
-      if (results.length === 1) autoDownload(results[0]);
+  function paint(cnv, src, s, limit) {
+    const sw = src.naturalWidth || src.width, sh = src.naturalHeight || src.height;
+    const r = Math.min(1, Math.sqrt(limit / (sw * sh)));
+    const w = Math.max(1, Math.round(sw * r)), h = Math.max(1, Math.round(sh * r));
+    cnv.width = w; cnv.height = h;
+    const ctx = cnv.getContext('2d');
+    ctx.clearRect(0, 0, w, h);
+    if (s.format === 'image/jpeg') { ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, w, h); } // JPEG has no alpha
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(src, 0, 0, w, h);
+    drawWatermark(ctx, w, h, s);
+    return r < 1;
+  }
+
+  // ── METADATA SCANNER ──
+  const SIGS = [
+    ['EXIF', 'fa-camera', /Exif\0\0|eXIf/],
+    ['XMP', 'fa-code', /ns\.adobe\.com\/xap|x:xmpmeta/],
+    ['IPTC', 'fa-tags', /Photoshop 3\.0|8BIM/],
+    ['ICC', 'fa-palette', /ICC_PROFILE|iCCP|ICCP/],
+    ['C2PA', 'fa-certificate', /c2pa|jumb|caBX/],
+    ['AI', 'fa-robot', /trainedAlgorithmicMedia|(tEXt|iTXt)(parameters|prompt|workflow|Dream)|Midjourney|DALL.?E|OpenAI|Firefly|NovelAI|Stable Diffusion|ComfyUI|SynthID|Imagen/i],
+    ['Text', 'fa-align-left', /tEXt|iTXt|zTXt/]
+  ];
+
+  function hasGps(bytes, t) { // t = start of TIFF header inside the EXIF block
+    try {
+      const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+      const le = bytes[t] === 0x49;
+      const ifd = t + dv.getUint32(t + 4, le), n = dv.getUint16(ifd, le);
+      for (let i = 0; i < n; i++) {
+        const e = ifd + 2 + i * 12;
+        if (dv.getUint16(e, le) === 0x8825) return dv.getUint16(t + dv.getUint32(e + 8, le), le) > 0;
+      }
+    } catch (e) {}
+    return false;
+  }
+
+  function scanBytes(bytes) {
+    const str = new TextDecoder('latin1').decode(bytes);
+    const found = SIGS.filter(([, , re]) => re.test(str)).map(([k, icon]) => ({ k, icon }));
+    let t = str.indexOf('Exif\0\0');
+    t = t >= 0 ? t + 6 : (str.indexOf('eXIf') >= 0 ? str.indexOf('eXIf') + 4 : -1);
+    if (t >= 0 && hasGps(bytes, t)) found.splice(1, 0, { k: 'GPS', icon: 'fa-location-dot' });
+    return found;
+  }
+
+  // shortcut: files > 4 MB are scanned head (3 MB) + tail (1 MB) only; metadata lives there in practice
+  async function scan(blob) {
+    if (blob.size <= 4194304) return scanBytes(new Uint8Array(await blob.arrayBuffer()));
+    const head = new Uint8Array(await blob.slice(0, 3145728).arrayBuffer());
+    const tail = new Uint8Array(await blob.slice(blob.size - 1048576).arrayBuffer());
+    const all = new Uint8Array(head.length + tail.length); all.set(head); all.set(tail, head.length);
+    return scanBytes(all);
+  }
+
+  // ── QUEUE ──
+  const isImage = f => f.type.startsWith('image/') || /\.(heic|heif|avif)$/i.test(f.name);
+  const fmtSize = b => b < 1048576 ? (b / 1024).toFixed(1) + ' KB' : (b / 1048576).toFixed(2) + ' MB';
+
+  function addFiles(list) {
+    const files = [...list];
+    const imgs = files.filter(isImage);
+    if (imgs.length < files.length) toast(`${files.length - imgs.length} non-image file(s) skipped`, 'fa-circle-exclamation');
+    let added = 0;
+    imgs.forEach(f => {
+      if (items.some(x => x.file.name === f.name && x.file.size === f.size && x.file.lastModified === f.lastModified)) return;
+      const it = { id: nextId++, file: f, thumbUrl: URL.createObjectURL(f), result: null, status: 'pending' };
+      items.push(it); renderItem(it); added++;
+      scan(f).then(found => { it.found = found; renderChips(it); }).catch(() => {});
+    });
+    if (added) {
+      toast(`${added} image${added > 1 ? 's' : ''} added`, 'fa-circle-check');
+      if (!selected) select(items[0]);
     }
     updateUI();
   }
 
-  function autoDownload(result) {
+  function renderItem(it) {
+    const el = document.createElement('div');
+    el.className = 'item';
+    el.innerHTML = `
+      <img class="thumb" alt="" title="Open preview">
+      <div class="info"><div class="name"></div><div class="meta"></div><div class="chips"><span class="chip dim"><i class="fa-solid fa-spinner fa-spin"></i> Scanning</span></div></div>
+      <div class="item-side">
+        <span class="status" data-s="pending"><i class="fa-regular fa-clock"></i><span>Pending</span></span>
+        <span class="btns">
+          <button class="icon-btn dl" hidden aria-label="Download"><i class="fa-solid fa-download"></i></button>
+          <button class="icon-btn rm" aria-label="Remove"><i class="fa-solid fa-xmark"></i></button>
+        </span>
+      </div>`;
+    el.querySelector('.thumb').src = it.thumbUrl;
+    el.querySelector('.name').textContent = it.file.name; // textContent: file names are untrusted
+    el.querySelector('.meta').textContent = `${fmtSize(it.file.size)} · ${(it.file.type || 'image').replace('image/', '').toUpperCase()}`;
+    el.querySelector('.thumb').onclick = e => { e.stopPropagation(); openModal(it.result ? it.result.url : it.thumbUrl); };
+    el.querySelector('.rm').onclick = e => { e.stopPropagation(); removeItem(it); };
+    el.querySelector('.dl').onclick = e => { e.stopPropagation(); download(it.result); };
+    el.onclick = () => select(it);
+    it.el = el;
+    queue.appendChild(el);
+  }
+
+  function renderChips(it) {
+    const box = it.el.querySelector('.chips');
+    const found = it.found || [];
+    if (it.result) {
+      box.innerHTML = found.length
+        ? `<span class="chip ok"><i class="fa-solid fa-broom"></i> Removed: ${found.map(f => f.k).join(', ')}</span>`
+        : '';
+      box.innerHTML += it.result.clean
+        ? `<span class="chip ok"><i class="fa-solid fa-shield-halved"></i> Verified clean</span>`
+        : `<span class="chip warn"><i class="fa-solid fa-triangle-exclamation"></i> Check output</span>`;
+      if (it.result.shrunk) box.innerHTML += `<span class="chip dim"><i class="fa-solid fa-compress"></i> Resized to fit device limit</span>`;
+    } else {
+      box.innerHTML = found.length
+        ? found.map(f => `<span class="chip warn"><i class="fa-solid ${f.icon}"></i> ${f.k}</span>`).join('')
+        : `<span class="chip dim"><i class="fa-solid fa-check"></i> No metadata found</span>`;
+    }
+  }
+
+  const STATUS = {
+    pending: ['fa-regular fa-clock', 'Pending'],
+    processing: ['fa-solid fa-spinner fa-spin', 'Working'],
+    done: ['fa-solid fa-check', 'Done'],
+    error: ['fa-solid fa-triangle-exclamation', 'Error']
+  };
+  function setStatus(it, s, title) {
+    it.status = s;
+    const el = it.el.querySelector('.status');
+    el.dataset.s = s;
+    el.title = title || '';
+    el.innerHTML = `<i class="${STATUS[s][0]}"></i><span>${STATUS[s][1]}</span>`;
+    it.el.querySelector('.dl').hidden = s !== 'done';
+  }
+
+  function removeItem(it) {
+    items = items.filter(x => x !== it);
+    URL.revokeObjectURL(it.thumbUrl);
+    if (it.result) URL.revokeObjectURL(it.result.url);
+    it.el.classList.add('leaving');
+    setTimeout(() => it.el.remove(), 300);
+    if (selected === it) select(items[0] || null);
+    updateUI();
+  }
+
+  btnClear.onclick = () => [...items].forEach(removeItem);
+
+  function updateUI() {
+    const done = items.filter(x => x.result).length;
+    empty.style.display = items.length ? 'none' : 'block';
+    $('#queue-count').textContent = items.length ? `${done}/${items.length} done` : '';
+    btnProcess.disabled = busy || !items.length;
+    btnDlAll.hidden = done === 0;
+    btnClear.hidden = busy || !items.length;
+    $('#process-lbl').textContent = busy ? 'Processing…' : items.length > 1 ? `Process ${items.length} images` : 'Process image';
+  }
+
+  // ── PREVIEW ──
+  function select(it) {
+    selected = it;
+    items.forEach(x => x.el.classList.toggle('selected', x === it));
+    $('#preview-name').textContent = it ? it.file.name : '';
+    schedulePreview();
+  }
+
+  let rafId = 0;
+  function schedulePreview() { cancelAnimationFrame(rafId); rafId = requestAnimationFrame(renderPreview); }
+  async function renderPreview() {
+    if (!selected) { previewWrap.classList.remove('has'); return; }
+    const it = selected;
+    if (previewFor !== it) {
+      if (previewSrc && previewSrc.close) previewSrc.close();
+      previewSrc = null; previewFor = it;
+      try { previewSrc = await loadImage(it.file); }
+      catch (e) { previewWrap.classList.remove('has'); return; }
+      if (selected !== it) return;
+    }
+    if (!previewSrc) return;
+    paint(previewCanvas, previewSrc, settings(), PREVIEW_PIXELS);
+    previewWrap.classList.add('has');
+  }
+
+  // ── PROCESS ──
+  const extOf = f => f === 'image/jpeg' ? '.jpg' : f === 'image/webp' ? '.webp' : '.png';
+  const toBlob = (cnv, type, q) => new Promise((res, rej) => cnv.toBlob(b => b ? res(b) : rej(new Error('Export failed')), type, q));
+
+  async function processAll() {
+    if (busy || !items.length) return;
+    busy = true; updateUI();
+    const s = settings();
+    progress.classList.add('on'); progressFill.style.width = '0%';
+    const todo = [...items];
+    let ok = 0;
+    for (let i = 0; i < todo.length; i++) {
+      const it = todo[i];
+      if (!items.includes(it)) continue; // removed meanwhile
+      setStatus(it, 'processing');
+      try {
+        const src = await loadImage(it.file);
+        const shrunk = paint(work, src, s, MAX_PIXELS);
+        if (src.close) src.close();
+        const blob = await toBlob(work, s.format, s.quality);
+        const left = await scan(blob);
+        if (left.length) console.warn('Metadata left in output', it.file.name, left);
+        if (it.result) URL.revokeObjectURL(it.result.url);
+        const base = s.randomName ? 'image-' + crypto.getRandomValues(new Uint32Array(1))[0].toString(36) : it.file.name.replace(/\.[^.]+$/, '') + '_marked';
+        it.result = { name: base + extOf(s.format), blob, url: URL.createObjectURL(blob), clean: left.length === 0, shrunk };
+        if (!items.includes(it)) { URL.revokeObjectURL(it.result.url); continue; }
+        it.el.querySelector('.thumb').src = it.result.url;
+        setStatus(it, 'done'); renderChips(it); ok++;
+      } catch (e) {
+        console.error(e);
+        if (items.includes(it)) setStatus(it, 'error', e.message);
+      }
+      progressFill.style.width = ((i + 1) / todo.length * 100) + '%';
+      updateUI();
+      await new Promise(r => setTimeout(r)); // let the UI breathe between files
+    }
+    work.width = work.height = 0; // free canvas memory
+    busy = false; updateUI();
+    setTimeout(() => progress.classList.remove('on'), 800);
+    if (ok) {
+      toast(`${ok} image${ok > 1 ? 's' : ''} watermarked & cleaned`, 'fa-wand-magic-sparkles');
+      if (todo.length === 1 && todo[0].result) download(todo[0].result);
+    }
+  }
+  btnProcess.onclick = processAll;
+
+  function download(r) {
+    if (!r) return;
     const a = document.createElement('a');
-    a.href = result.url;
-    a.download = result.name;
-    a.click();
+    a.href = r.url; a.download = r.name;
+    document.body.appendChild(a); a.click(); a.remove();
   }
+  btnDlAll.onclick = () => items.filter(x => x.result).forEach((x, i) => setTimeout(() => download(x.result), i * 350));
 
-  function downloadAll() {
-    results.forEach((r, i) => {
-      setTimeout(() => autoDownload(r), i * 300);
-    });
-  }
+  // ── INPUT: click, keyboard, drag-drop anywhere, paste ──
+  const dz = $('#dropzone'), fileInput = $('#file-input');
+  dz.addEventListener('click', () => fileInput.click());
+  dz.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileInput.click(); } });
+  fileInput.addEventListener('change', () => { addFiles(fileInput.files); fileInput.value = ''; });
 
-  function closeModal() { modal.classList.remove('open'); }
+  let dragDepth = 0;
+  window.addEventListener('dragenter', e => { e.preventDefault(); dragDepth++; dz.classList.add('drag'); });
+  window.addEventListener('dragleave', () => { if (--dragDepth <= 0) { dragDepth = 0; dz.classList.remove('drag'); } });
+  window.addEventListener('dragover', e => e.preventDefault());
+  window.addEventListener('drop', e => {
+    e.preventDefault(); dragDepth = 0; dz.classList.remove('drag');
+    if (e.dataTransfer && e.dataTransfer.files.length) addFiles(e.dataTransfer.files);
+  });
+  window.addEventListener('paste', e => {
+    const files = e.clipboardData && e.clipboardData.files;
+    if (files && files.length && !e.target.closest('input')) addFiles(files);
+  });
+
+  // ── MODAL + TOAST ──
+  function openModal(src) { modalImg.src = src; modal.classList.add('open'); modal.setAttribute('aria-hidden', 'false'); }
+  function closeModal() { modal.classList.remove('open'); modal.setAttribute('aria-hidden', 'true'); }
+  modal.addEventListener('click', e => { if (e.target !== modalImg) closeModal(); });
   document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+  function toast(msg, icon) {
+    const t = document.createElement('div');
+    t.className = 'toast';
+    t.innerHTML = `<i class="fa-solid ${icon || 'fa-circle-info'}"></i><span></span>`;
+    t.lastChild.textContent = msg;
+    $('#toasts').appendChild(t);
+    setTimeout(() => { t.classList.add('out'); setTimeout(() => t.remove(), 300); }, 2600);
+  }
+
+  // font must be loaded before canvas text, or the first render uses a fallback font
+  if (document.fonts) document.fonts.load('600 40px Inter').then(schedulePreview, () => {});
+  updateUI();
+
+  // ── SELF-CHECK for the scanner ──
+  (function selfTest() {
+    const enc = s => Uint8Array.from(s, c => c.charCodeAt(0));
+    // "Exif\0\0" + little-endian TIFF, IFD0 with one GPS pointer entry -> GPS IFD with 1 entry
+    const gps = new Uint8Array([...enc('Exif\0\0'), 0x49,0x49,0x2a,0, 8,0,0,0, 1,0, 0x25,0x88, 4,0, 1,0,0,0, 26,0,0,0, 0,0,0,0, 1,0]);
+    const r = scanBytes(gps).map(f => f.k);
+    console.assert(r.includes('EXIF') && r.includes('GPS'), 'scanner: EXIF+GPS', r);
+    console.assert(scanBytes(enc('....tEXtparameters\0a cat')).some(f => f.k === 'AI'), 'scanner: SD prompt');
+    console.assert(scanBytes(enc('\x89PNG....IDAT')).length === 0, 'scanner: clean');
+  })();
 </script>
 </body>
 </html>
