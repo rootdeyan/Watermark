@@ -324,6 +324,10 @@
   .privacy i { color: var(--accent); font-size: 16px; margin-top: 2px; }
   .privacy b { color: var(--text); }
 
+  .wm-only { transition: opacity .35s var(--ease), filter .35s var(--ease); }
+  body.clean-mode .wm-only { opacity: .35; filter: grayscale(1); pointer-events: none; }
+  .mode-hint { font-size: 12.5px; color: var(--muted); line-height: 1.5; margin-top: 12px; }
+
   /* ACTIONS */
   .actions { display: flex; flex-direction: column; gap: 10px; animation: rise .6s var(--ease) both; animation-delay: .3s; }
   .btn {
@@ -480,7 +484,16 @@
   </section>
 
   <aside class="col side">
-    <div class="card" style="--d:.1s">
+    <div class="card" style="--d:.05s">
+      <div class="card-head"><div class="card-title"><span class="num"><i class="fa-solid fa-sliders"></i></span> Mode</div></div>
+      <div class="seg full" role="radiogroup" aria-label="Mode">
+        <input type="radio" name="mode" id="m-mark" value="mark" checked><label for="m-mark"><i class="fa-solid fa-stamp"></i> Watermark</label>
+        <input type="radio" name="mode" id="m-clean" value="clean"><label for="m-clean"><i class="fa-solid fa-broom"></i> Clean only</label>
+      </div>
+      <p class="mode-hint" id="mode-hint">Adds your watermark and removes all metadata.</p>
+    </div>
+
+    <div class="card wm-only" style="--d:.1s">
       <div class="card-head"><div class="card-title"><span class="num"><i class="fa-solid fa-font"></i></span> Watermark</div></div>
       <div class="controls">
         <div class="field">
@@ -498,7 +511,7 @@
       </div>
     </div>
 
-    <div class="card" style="--d:.17s">
+    <div class="card wm-only" style="--d:.17s">
       <div class="card-head"><div class="card-title"><span class="num"><i class="fa-solid fa-table-cells"></i></span> Layout</div></div>
       <div class="controls">
         <div class="field">
@@ -630,6 +643,18 @@
   document.querySelector('.side').addEventListener('input', schedulePreview);
   document.querySelector('.side').addEventListener('change', schedulePreview);
 
+  function syncMode() {
+    const clean = $('#m-clean').checked;
+    document.body.classList.toggle('clean-mode', clean);
+    $('#mode-hint').textContent = clean
+      ? 'No watermark. Only removes metadata: EXIF, GPS, camera info, AI tags and Content Credentials.'
+      : 'Adds your watermark and removes all metadata.';
+    store.set('wm-mode', clean ? 'clean' : 'mark');
+    updateUI();
+  }
+  if (store.get('wm-mode', 'mark') === 'clean') $('#m-clean').checked = true;
+  document.querySelectorAll('input[name=mode]').forEach(r => r.addEventListener('change', syncMode));
+
   function hexToRgb(hex) { const n = parseInt(hex.slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255].join(','); }
   function settings() {
     let color = $('input[name=color]:checked').value;
@@ -643,7 +668,8 @@
       color: hexToRgb(color),
       format: $('input[name=format]:checked').value,
       quality: +$('#out-quality').value / 100,
-      randomName: $('#rand-name').checked
+      randomName: $('#rand-name').checked,
+      mode: $('input[name=mode]:checked').value
     };
   }
 
@@ -691,7 +717,7 @@
     if (s.format === 'image/jpeg') { ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, w, h); } // JPEG has no alpha
     ctx.imageSmoothingQuality = 'high';
     ctx.drawImage(src, 0, 0, w, h);
-    drawWatermark(ctx, w, h, s);
+    if (s.mode !== 'clean') drawWatermark(ctx, w, h, s);
     return r < 1;
   }
 
@@ -835,7 +861,8 @@
     btnProcess.disabled = busy || !items.length;
     btnDlAll.hidden = done === 0;
     btnClear.hidden = busy || !items.length;
-    $('#process-lbl').textContent = busy ? 'Processing…' : items.length > 1 ? `Process ${items.length} images` : 'Process image';
+    const verb = document.body.classList.contains('clean-mode') ? 'Clean' : 'Watermark';
+    $('#process-lbl').textContent = busy ? 'Processing…' : items.length > 1 ? `${verb} ${items.length} images` : `${verb} image`;
   }
 
   // ── PREVIEW ──
@@ -886,7 +913,7 @@
         const left = await scan(blob);
         if (left.length) console.warn('Metadata left in output', it.file.name, left);
         if (it.result) URL.revokeObjectURL(it.result.url);
-        const base = s.randomName ? 'image-' + crypto.getRandomValues(new Uint32Array(1))[0].toString(36) : it.file.name.replace(/\.[^.]+$/, '') + '_marked';
+        const base = s.randomName ? 'image-' + crypto.getRandomValues(new Uint32Array(1))[0].toString(36) : it.file.name.replace(/\.[^.]+$/, '') + (s.mode === 'clean' ? '_clean' : '_marked');
         it.result = { name: base + extOf(s.format), blob, url: URL.createObjectURL(blob), clean: left.length === 0, shrunk };
         if (!items.includes(it)) { URL.revokeObjectURL(it.result.url); continue; }
         it.el.querySelector('.thumb').src = it.result.url;
@@ -903,7 +930,7 @@
     busy = false; updateUI();
     setTimeout(() => progress.classList.remove('on'), 800);
     if (ok) {
-      toast(`${ok} image${ok > 1 ? 's' : ''} watermarked & cleaned`, 'fa-wand-magic-sparkles');
+      toast(`${ok} image${ok > 1 ? 's' : ''} ${s.mode === 'clean' ? 'cleaned' : 'watermarked & cleaned'}`, 'fa-wand-magic-sparkles');
       if (todo.length === 1 && todo[0].result) download(todo[0].result);
     }
   }
@@ -953,7 +980,7 @@
 
   // font must be loaded before canvas text, or the first render uses a fallback font
   if (document.fonts) document.fonts.load('600 40px Inter').then(schedulePreview, () => {});
-  updateUI();
+  syncMode();
 
   // ── SELF-CHECK for the scanner ──
   (function selfTest() {
